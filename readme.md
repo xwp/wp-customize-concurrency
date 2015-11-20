@@ -10,6 +10,8 @@ Concurrency locking in the Customizer.
 **Stable tag:** 0.1  
 **License:** [GPLv2 or later](http://www.gnu.org/licenses/gpl-2.0.html)  
 
+[![Build Status](https://travis-ci.org/xwp/wp-customize-concurrency.svg?branch=master)](https://travis-ci.org/xwp/wp-customize-concurrency) [![Coverage Status](https://coveralls.io/repos/xwp/wp-customize-concurrency/badge.svg?branch=master)](https://coveralls.io/github/xwp/wp-customize-concurrency) [![Built with Grunt](https://cdn.gruntjs.com/builtwith.png)](http://gruntjs.com) [![devDependency Status](https://david-dm.org/xwp/wp-customize-concurrency/dev-status.svg)](https://david-dm.org/xwp/wp-customize-concurrency#info=devDependencies) 
+
 ## Description ##
 
 Addresses Core ticket [#31436](https://core.trac.wordpress.org/ticket/31436): Handle conflicts in concurrent Customizer sessions.

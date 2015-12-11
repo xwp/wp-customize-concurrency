@@ -502,7 +502,7 @@ class Customize_Concurrency {
 		$setting_id = $post->post_name;
 		add_action( 'deleted_post', function ( $deleted_post_id ) use ( $post_id, $setting_id ) {
 			if ( $post_id === $deleted_post_id ) {
-				wp_cache_delete( $setting_id, self::CACHE_GROUP );
+				wp_cache_delete( $setting_id, Customize_Concurrency::CACHE_GROUP );
 			}
 		} );
 	}

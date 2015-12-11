@@ -292,6 +292,8 @@ var customizeConcurrency = ( function( $ ) {
 				return;
 			}
 
+			// @todo Maybe check that the sidebar wasn't already dirty before reverting the value.
+
 			// Set the previewed value back to the saved value.
 			if ( 'undefined' !== typeof wp.customize.settings.settings[ previewedSetting.id ] ) {
 				setting.set( wp.customize.settings.settings[ previewedSetting.id ].value );
@@ -301,6 +303,7 @@ var customizeConcurrency = ( function( $ ) {
 			setting.concurrencyLocked( false );
 
 			// @todo Should we refresh the preview, the setting may have been removed?
+			// This could also be irritating if you are currently editing another setting.
 			switch ( setting.transport ) {
 				case 'refresh':
 					return wp.customize.previewer.refresh();

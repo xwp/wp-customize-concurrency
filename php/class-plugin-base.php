@@ -1,34 +1,64 @@
 <?php
+/**
+ * Abstract bootstrap class.
+ *
+ * @package CustomizeConcurrency
+ */
 
 namespace CustomizeConcurrency;
 
+/**
+ * Sets member variables & autoloads classes.
+ */
 abstract class Plugin_Base {
 
 	/**
+	 * Plugin config.
+	 *
 	 * @var array
 	 */
 	public $config = array();
 
 	/**
+	 * Slug.
+	 *
 	 * @var string
 	 */
 	public $slug;
 
 	/**
+	 * Directory path.
+	 *
 	 * @var string
 	 */
 	public $dir_path;
 
 	/**
+	 * Directory URL.
+	 *
 	 * @var string
 	 */
 	public $dir_url;
 
 	/**
+	 * Autoload class cirectory.
+	 *
 	 * @var string
 	 */
 	protected $autoload_class_dir = 'php';
 
+	/**
+	 * Autoload classes cache.
+	 *
+	 * @var array
+	 */
+	protected $autoload_matches_cache = array();
+
+	/**
+	 * Class constructor.
+	 *
+	 * @codeCoverageIgnore
+	 */
 	function __construct() {
 		$location = $this->locate_plugin();
 		$this->slug = $location['dir_basename'];
@@ -38,6 +68,8 @@ abstract class Plugin_Base {
 	}
 
 	/**
+	 * Get the ReflectionObject class.
+	 *
 	 * @return \ReflectionObject
 	 */
 	function get_object_reflection() {
@@ -48,12 +80,10 @@ abstract class Plugin_Base {
 		return $reflection;
 	}
 
-	protected $autoload_matches_cache = array();
-
 	/**
 	 * Autoload for classes that are in the same namespace as $this.
 	 *
-	 * @param  string $class
+	 * @param  string $class The class to autoload.
 	 * @return void
 	 */
 	function autoload( $class ) {
@@ -87,23 +117,23 @@ abstract class Plugin_Base {
 	 * Version of plugin_dir_url() which works for plugins installed in the plugins directory,
 	 * and for plugins bundled with themes.
 	 *
-	 * @throws \Exception
+	 * @throws \Exception This line is just for a WordPress-Docs PHPCS bug.
 	 * @return array
 	 */
 	public function locate_plugin() {
 		$file_name = $this->get_object_reflection()->getFileName();
 		if ( '/' !== \DIRECTORY_SEPARATOR ) {
-			$file_name = str_replace( \DIRECTORY_SEPARATOR, '/', $file_name ); // Windows compat
+			$file_name = str_replace( \DIRECTORY_SEPARATOR, '/', $file_name ); // Windows compat.
 		}
 		$plugin_dir = preg_replace( '#(.*plugins[^/]*/[^/]+)(/.*)?#', '$1', $file_name, 1, $count );
 		if ( 0 === $count ) {
 			throw new \Exception( "Class not located within a directory tree containing 'plugins': $file_name" );
 		}
 
-		// Make sure that we can reliably get the relative path inside of the content directory
+		// Make sure that we can reliably get the relative path inside of the content directory.
 		$content_dir = trailingslashit( WP_CONTENT_DIR );
 		if ( '/' !== \DIRECTORY_SEPARATOR ) {
-			$content_dir = str_replace( \DIRECTORY_SEPARATOR, '/', $content_dir ); // Windows compat
+			$content_dir = str_replace( \DIRECTORY_SEPARATOR, '/', $content_dir ); // Windows compat.
 		}
 		if ( 0 !== strpos( $plugin_dir, $content_dir ) ) {
 			throw new \Exception( 'Plugin dir is not inside of WP_CONTENT_DIR' );
@@ -127,8 +157,8 @@ abstract class Plugin_Base {
 	/**
 	 * Call trigger_error() if not on VIP production.
 	 *
-	 * @param string $message
-	 * @param int $code
+	 * @param string $message The error message.
+	 * @param int    $code The error code.
 	 */
 	public function trigger_warning( $message, $code = \E_USER_WARNING ) {
 		if ( ! $this->is_wpcom_vip_prod() ) {

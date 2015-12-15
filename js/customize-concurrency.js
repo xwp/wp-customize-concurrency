@@ -341,8 +341,8 @@ var customizeConcurrency = ( function( $ ) {
 	 */
 	self.tickHeartbeat = function( e, data ) {
 		var self = this,
-			settings = {},
-			sidebars = {},
+			otherSettingList = [],
+			sidebarSettingList = [],
 			event;
 
 		if ( ! data.customize_concurrency ) {
@@ -356,15 +356,15 @@ var customizeConcurrency = ( function( $ ) {
 		// Sidebars should be added last, including contextual ones.
 		_.each( data.customize_concurrency.setting_updates, function( settingUpdate, id ) {
 			if ( /^sidebars_widgets\[/.test( id ) || -1 !== id.indexOf( '[sidebars_widgets][' ) ) {
-				sidebars[ id ] = settingUpdate;
+				sidebarSettingList.push( { id: id, data: settingUpdate } );
 			} else {
-				settings[ id ] = settingUpdate;
+				otherSettingList.push( { id: id, data: settingUpdate } );
 			}
 		} );
-		$.extend( settings, sidebars );
 
-		_.each( settings, function( settingUpdate, id ) {
-			var setting, widgetId, widgetControl;
+		_.each( otherSettingList.concat( sidebarSettingList ), function( settingItem ) {
+			var id = settingItem.id,
+				settingUpdate = settingItem.data;
 
 			event = jQuery.Event( 'customize-concurrency-setting-update' );
 			$( document ).trigger( event, [ id, settingUpdate ] );

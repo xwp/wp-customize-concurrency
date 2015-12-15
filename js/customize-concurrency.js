@@ -243,13 +243,6 @@ var customizeConcurrency = ( function( $ ) {
 			wasSaved = wp.customize.state( 'saved' ).get(),
 			event;
 
-		event = jQuery.Event( 'customize-concurrency-setting-locked' );
-		$( document ).trigger( event, [ previewedSetting ] );
-
-		if ( event.isDefaultPrevented() ) {
-			return;
-		}
-
 		if ( ! setting ) {
 			console.warn( 'updatePreviewedSettingLockedState: Setting does not exist: ' + previewedSetting.id );
 			return;
@@ -275,6 +268,9 @@ var customizeConcurrency = ( function( $ ) {
 			setting._dirty = false;
 		}
 		wp.customize.state( 'saved' ).set( wasSaved );
+
+		event = jQuery.Event( 'customize-concurrency-setting-locked' );
+		$( document ).trigger( event, [ setting ] );
 	};
 
 	/**

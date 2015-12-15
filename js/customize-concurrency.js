@@ -240,7 +240,8 @@ var customizeConcurrency = ( function( $ ) {
 	self.updatePreviewedSettingLockedState = function( previewedSetting ) {
 		var data = previewedSetting.get(),
 			setting = wp.customize( previewedSetting.id ),
-			wasSaved = wp.customize.state( 'saved' ).get();
+			wasSaved = wp.customize.state( 'saved' ).get(),
+			event;
 
 		event = jQuery.Event( 'customize-concurrency-setting-locked' );
 		$( document ).trigger( event, [ previewedSetting ] );
@@ -250,6 +251,7 @@ var customizeConcurrency = ( function( $ ) {
 		}
 
 		if ( ! setting ) {
+			// @todo For recently edited widgets, we should make sure they exist in settings.
 			console.warn( 'updatePreviewedSettingLockedState: Setting does not exist: ' + previewedSetting.id );
 			return;
 		}
@@ -340,7 +342,8 @@ var customizeConcurrency = ( function( $ ) {
 	self.tickHeartbeat = function( e, data ) {
 		var self = this,
 			settings = {},
-			sidebars = {};
+			sidebars = {},
+			event;
 
 		if ( ! data.customize_concurrency ) {
 			return;

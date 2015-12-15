@@ -270,7 +270,7 @@ var customizeConcurrency = ( function( $ ) {
 			delete self.previewedSettingsPendingSend[ setting.id ];
 		}
 
-		setting.set( data.value );
+		setting.setQuietly( data.value );
 		if ( 'publish' === data.post_status ) {
 			setting._dirty = false;
 		}
@@ -286,7 +286,10 @@ var customizeConcurrency = ( function( $ ) {
 	 * @param {int} previewedSetting.id
 	 */
 	self.unlockPreviewedSetting = function( previewedSetting ) {
-		var setting, event;
+		var hasOriginal = false,
+			setting = null,
+			event;
+
 		if ( wp.customize.has( previewedSetting.id ) ) {
 			setting = wp.customize( previewedSetting.id );
 
@@ -297,23 +300,23 @@ var customizeConcurrency = ( function( $ ) {
 				return;
 			}
 
-			// @todo Maybe check that the sidebar wasn't already dirty before reverting the value.
-
 			// Set the previewed value back to the saved value.
 			if ( 'undefined' !== typeof wp.customize.settings.settings[ previewedSetting.id ] ) {
-				setting.set( wp.customize.settings.settings[ previewedSetting.id ].value );
+				setting.setQuietly( wp.customize.settings.settings[ previewedSetting.id ].value );
+				hasOriginal = true;
 			}
 
 			setting._dirty = false;
 			setting.concurrencyLocked( false );
 
-			// @todo Should we refresh the preview, the setting may have been removed?
-			// This could also be irritating if you are currently editing another setting.
-			switch ( setting.transport ) {
-				case 'refresh':
-					return wp.customize.previewer.refresh();
-				case 'postMessage':
-					return wp.customize.previewer.send( 'setting', [ setting.id, wp.customize() ] );
+			// Was added to the UI, and is now removed so we need to force a refresh.
+			if ( ! hasOriginal ) {
+				switch ( setting.transport ) {
+					case 'refresh':
+						wp.customize.previewer.refresh();
+					case 'postMessage':
+						wp.customize.previewer.send( 'setting', [ setting.id, wp.customize() ] );
+				}
 			}
 		}
 	};
@@ -369,6 +372,7 @@ var customizeConcurrency = ( function( $ ) {
 			$( document ).trigger( event, [ id, settingUpdate ] );
 
 			if ( event.isDefaultPrevented() ) {
+				self.updateRecentlyPreviewedSetting( id, settingUpdate );
 				return;
 			}
 
@@ -377,8 +381,6 @@ var customizeConcurrency = ( function( $ ) {
 					transport: settingUpdate.transport,
 					previewer: wp.customize.previewer
 				} );
-
-				// @todo If this is a widget, we should create the control to go with it?
 			}
 
 			self.updateRecentlyPreviewedSetting( id, settingUpdate );
@@ -393,7 +395,28 @@ var customizeConcurrency = ( function( $ ) {
 		self.previousSettingInitialize.call( setting, id, value, options );
 	};
 
-	// @todo update locked state when the setting gets added?
+	/**
+	 * Update a setting but do not let it trigger a preview change, and
+	 * don't let the Customizer's 'saved' state turn false.
+	 *
+	 * @param {*} value
+	 * @returns {wp.customize.Setting}
+	 */
+	wp.customize.Setting.prototype.setQuietly = function( value ) {
+		var oldTransport, wasSaved;
+		if ( wp.customize.state ) {
+			wasSaved = wp.customize.state( 'saved' ).get();
+		}
+		oldTransport = this.transport;
+		/* Temporarily set to noop so that the contextual value can be quietly set without triggering */
+		this.transport = 'noop';
+		this.set( value );
+		this.transport = oldTransport;
+		if ( wp.customize.state ) {
+			wp.customize.state( 'saved' ).set( wasSaved );
+		}
+		return this;
+	};
 
 	// Link a control with its settings' locked states.
 	wp.customize.control.bind( 'add', function( control ) {
@@ -436,6 +459,7 @@ var customizeConcurrency = ( function( $ ) {
 		var self = this;
 
 		_.each( self.recently_previewed_settings_data, function( previewedSetting, settingId ) {
+
 			// Create any recently-previewed settings that don't exist (dynamic settings).
 			if ( ! wp.customize.has( settingId ) ) {
 				wp.customize.create( settingId, settingId, previewedSetting.value, {
@@ -449,8 +473,6 @@ var customizeConcurrency = ( function( $ ) {
 
 		$( '#customize-footer-actions' ).append( '<div id="concurrent-users"></div>' );
 
-		// @todo we do want the locked dirty settings to be included if it's not a customize_save event
-		// @todo so we may want to hook into the jQuery Ajax beforeSend event
 		wp.customize.previewer.query = self.prepareQueryData;
 
 		self.recentlyPreviewedSettings.bind( 'add',    self.updateConcurrentUserPresence );

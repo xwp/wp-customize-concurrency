@@ -174,6 +174,7 @@ class Customize_Concurrency {
 				'post_status' => $post->post_status,
 				'post_date' => strtotime( $post->post_date_gmt ),
 				'value' => $value,
+				'transport' => $setting->transport,
 			);
 		}
 

@@ -251,7 +251,6 @@ var customizeConcurrency = ( function( $ ) {
 		}
 
 		if ( ! setting ) {
-			// @todo For recently edited widgets, we should make sure they exist in settings.
 			console.warn( 'updatePreviewedSettingLockedState: Setting does not exist: ' + previewedSetting.id );
 			return;
 		}
@@ -436,6 +435,18 @@ var customizeConcurrency = ( function( $ ) {
 	self.init = function() {
 		var self = this;
 
+		_.each( self.recently_previewed_settings_data, function( previewedSetting, settingId ) {
+			// Create any recently-previewed settings that don't exist (dynamic settings).
+			if ( ! wp.customize.has( settingId ) ) {
+				wp.customize.create( settingId, settingId, previewedSetting.value, {
+					transport: previewedSetting.transport,
+					previewer: wp.customize.previewer
+				} );
+			}
+
+			self.updateRecentlyPreviewedSetting( settingId, previewedSetting );
+		} );
+
 		$( '#customize-footer-actions' ).append( '<div id="concurrent-users"></div>' );
 
 		// @todo we do want the locked dirty settings to be included if it's not a customize_save event
@@ -483,11 +494,6 @@ var customizeConcurrency = ( function( $ ) {
 
 		self.updateConcurrentUserPresence();
 	};
-
-	_.each( self.recently_previewed_settings_data, function( previewedSetting, settingId ) {
-		self.updateRecentlyPreviewedSetting( settingId, previewedSetting );
-	} );
-	delete self.recently_previewed_settings_data;
 
 	// Boot.
 	wp.customize.bind( 'ready', function() {

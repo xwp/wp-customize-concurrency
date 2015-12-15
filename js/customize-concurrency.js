@@ -177,7 +177,11 @@ var customizeConcurrency = ( function( $ ) {
 	self.prepareQueryData = function() {
 		var dirtyCustomized = {};
 		wp.customize.each( function( value, key ) {
-			if ( value._dirty && ! value.concurrencyLocked() ) {
+			var shouldInclude = (
+				( $( 'body' ).hasClass( 'saving' ) && value._dirty && ! value.concurrencyLocked() ) ||
+				( ! $( 'body' ).hasClass( 'saving' ) && ( value._dirty || value.concurrencyLocked() ) )
+			);
+			if ( shouldInclude ) {
 				dirtyCustomized[ key ] = value();
 			}
 		} );
@@ -334,7 +338,10 @@ var customizeConcurrency = ( function( $ ) {
 	 * @param {object} data
 	 */
 	self.tickHeartbeat = function( e, data ) {
-		var self = this;
+		var self = this,
+			settings = {},
+			sidebars = {};
+
 		if ( ! data.customize_concurrency ) {
 			return;
 		}
@@ -343,14 +350,23 @@ var customizeConcurrency = ( function( $ ) {
 			self.last_update_timestamp_cursor = data.customize_concurrency.next_update_timestamp_cursor;
 		}
 
+		// Sidebars should be added last, including contextual ones.
 		_.each( data.customize_concurrency.setting_updates, function( settingUpdate, id ) {
-			var setting;
+			if ( /^sidebars_widgets\[/.test( id ) || -1 !== id.indexOf( '[sidebars_widgets][' ) ) {
+				sidebars[ id ] = settingUpdate;
+			} else {
+				settings[ id ] = settingUpdate;
+			}
+		} );
+		$.extend( settings, sidebars );
+
+		_.each( settings, function( settingUpdate, id ) {
+			var setting, widgetId, widgetControl;
 
 			event = jQuery.Event( 'customize-concurrency-setting-update' );
 			$( document ).trigger( event, [ id, settingUpdate ] );
 
 			if ( event.isDefaultPrevented() ) {
-				self.updateRecentlyPreviewedSetting( id, settingUpdate ); // @todo Not sure about this.
 				return;
 			}
 

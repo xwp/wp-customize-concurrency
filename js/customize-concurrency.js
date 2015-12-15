@@ -400,7 +400,12 @@ var customizeConcurrency = ( function( $ ) {
 	wp.customize.control.bind( 'add', function( control ) {
 		control.concurrencySettingLockedCount = new wp.customize.Value( 0 );
 		control.deferred.embedded.done( function() {
+			var lockedCount = 0;
+
 			_.each( control.settings, function( setting ) {
+				if ( setting.concurrencyLocked() ) {
+					lockedCount += 1;
+				}
 				setting.concurrencyLocked.bind( function( nowLocked, wasLocked ) {
 					if ( nowLocked === wasLocked ) {
 						return;
@@ -412,6 +417,8 @@ var customizeConcurrency = ( function( $ ) {
 					}
 				} );
 			} );
+
+			control.concurrencySettingLockedCount.set( lockedCount );
 		} );
 
 		control.concurrencySettingLockedCount.bind( function( lockedCount ) {

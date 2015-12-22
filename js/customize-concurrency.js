@@ -240,7 +240,6 @@ var customizeConcurrency = ( function( $ ) {
 	self.updatePreviewedSettingLockedState = function( previewedSetting ) {
 		var data = previewedSetting.get(),
 			setting = wp.customize( previewedSetting.id ),
-			wasSaved = wp.customize.state( 'saved' ).get(),
 			event;
 
 		if ( ! setting ) {
@@ -267,7 +266,6 @@ var customizeConcurrency = ( function( $ ) {
 		if ( 'publish' === data.post_status ) {
 			setting._dirty = false;
 		}
-		wp.customize.state( 'saved' ).set( wasSaved );
 
 		event = jQuery.Event( 'customize-concurrency-setting-locked' );
 		$( document ).trigger( event, [ setting ] );
@@ -383,6 +381,24 @@ var customizeConcurrency = ( function( $ ) {
 		} );
 	};
 
+	/**
+	 * Returns a widget ID from the setting ID, or null when it's not a widget.
+	 *
+	 * @param {String} settingId
+	 * @returns {string|null} widgetId
+	 */
+	self.settingIdToWidgetId = function( settingId ) {
+		var widgetId = null,
+			matches;
+
+		matches = settingId.match( /^widget_(.+?)(?:\[(\d+)\])?$/ );
+		if ( matches ) {
+			widgetId = matches[1] + '-' + parseInt( matches[2], 10 );
+		}
+
+		return widgetId;
+	};
+
 	// Inject the concurrencyLocked value for each setting created.
 	self.previousSettingInitialize = wp.customize.Setting.prototype.initialize;
 	wp.customize.Setting.prototype.initialize = function( id, value, options ) {
@@ -404,7 +420,7 @@ var customizeConcurrency = ( function( $ ) {
 			wasSaved = wp.customize.state( 'saved' ).get();
 		}
 		oldTransport = this.transport;
-		/* Temporarily set to noop so that the contextual value can be quietly set without triggering */
+		/* Temporarily set to noop so that the value can be quietly set without triggering */
 		this.transport = 'noop';
 		this.set( value );
 		this.transport = oldTransport;
@@ -480,7 +496,8 @@ var customizeConcurrency = ( function( $ ) {
 		self.recentlyPreviewedSettings.bind( 'remove', self.unlockPreviewedSetting );
 
 		wp.customize.bind( 'change', function( setting ) {
-			var event;
+			var event,
+				widgetId;
 
 			if ( setting.concurrencyLocked() || ! setting._dirty ) {
 				return;
@@ -494,6 +511,35 @@ var customizeConcurrency = ( function( $ ) {
 			}
 
 			self.previewedSettingsPendingSend[ setting.id ] = setting();
+			widgetId = self.settingIdToWidgetId( setting.id );
+
+			// Maintain a lock on the sidebar control when a locked widget is being previewed.
+			if ( widgetId ) {
+				wp.customize.each( function( value, id ) {
+					var setting = wp.customize( id ),
+						previewSidebar,
+						event;
+
+					previewSidebar = (
+						/sidebars_widgets\]?\[/.test( setting.id ) &&
+						! setting.concurrencyLocked() &&
+						setting._dirty &&
+						_.contains( setting._value, widgetId )
+					);
+
+					if ( previewSidebar ) {
+
+						// We re-run the event so it can be filtered like above.
+						event = jQuery.Event( 'customize-concurrency-setting-change' );
+						$( document ).trigger( event, [ setting ] );
+
+						if ( ! event.isDefaultPrevented() ) {
+							self.previewedSettingsPendingSend[ setting.id ] = setting();
+						}
+					}
+				} );
+			}
+
 			self.sendSettingsPreviewed();
 		} );
 

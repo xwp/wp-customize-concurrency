@@ -601,13 +601,15 @@ class Test_Customize_Concurrency extends \WP_UnitTestCase {
 	 */
 	function test_customize_save_after() {
 		$instance = new Customize_Concurrency( $this->plugin );
+		$setting_id = 'foo[bar]';
 
-		$instance->customize_manager->add_setting( 'foo' );
-		$instance->customize_manager->set_post_value( 'foo', 'baz' );
+		$instance->customize_manager->add_setting( $setting_id );
+		$instance->customize_manager->set_post_value( $setting_id, 'baz' );
 		$instance->customize_save_after();
 		$foo_results = apply_filters( 'customize_save_response', array() );
 		$this->assertArrayHasKey( 'concurrency_save_results', $foo_results );
-		$this->assertArrayHasKey( 'foo', $foo_results['concurrency_save_results'] );
+		$this->assertArrayHasKey( $setting_id, $foo_results['concurrency_save_results'] );
+		$this->assertEquals( 'publish', $foo_results['concurrency_save_results'][ $setting_id ]['post_status'] );
 	}
 
 	/**

@@ -163,7 +163,7 @@ class Customize_Concurrency {
 			$value = null;
 			if ( 'draft' === $post->post_status ) {
 				$value = json_decode( $post->post_content_filtered, true );
-				if ( ! preg_match( '/^sidebars_widgets\[/', $setting_id ) ) {
+				if ( ! preg_match( '/sidebars_widgets\]?\[/', $setting_id ) ) {
 					$value = apply_filters( "customize_sanitize_js_{$setting_id}", $value, $setting );
 				}
 			}
@@ -292,7 +292,7 @@ class Customize_Concurrency {
 			 * @todo This filter is prevented from applying due to optimized-widget-registration.
 			 * Make sure we account for why. Heartbeat may need to send the active widgets.
 			 */
-			if ( ! preg_match( '/^sidebars_widgets\[/', $setting_id ) ) {
+			if ( ! preg_match( '/sidebars_widgets\]?\[/', $setting_id ) ) {
 				$value = apply_filters( "customize_sanitize_js_{$setting_id}", $value, $setting );
 			}
 
@@ -587,13 +587,14 @@ class Customize_Concurrency {
 				&&
 				$found_preview_timestamp > $preview_timestamp_cursor
 			);
-			if ( $should_reject_preview ) {
 
-				$setting = $this->customize_manager->get_setting( $setting_id );
-				$value = json_decode( $post->post_content_filtered, true );
-				if ( ! preg_match( '/^sidebars_widgets\[/', $setting_id ) ) {
-					$value = apply_filters( "customize_sanitize_js_{$setting_id}", $value, $setting );
-				}
+			$setting = $this->customize_manager->get_setting( $setting_id );
+			$value = json_decode( $post->post_content_filtered, true );
+			if ( ! preg_match( '/sidebars_widgets\]?\[/', $setting_id ) ) {
+				$value = apply_filters( "customize_sanitize_js_{$setting_id}", $value, $setting );
+			}
+
+			if ( $should_reject_preview ) {
 				return array(
 					'status' => 'rejected',
 					'post_id' => $post->ID,
@@ -609,6 +610,7 @@ class Customize_Concurrency {
 			}
 
 			$previous_preview_timestamp = $found_preview_timestamp;
+			$previous_preview_value = $value;
 		}
 
 		$post_data = array(

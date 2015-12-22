@@ -13,7 +13,7 @@
 	padding-left: 40px;
 	position: absolute;
 	right: 14px;
-	z-index: 10000000;
+	z-index: 1000001;
 }
 
 #concurrent-users img {

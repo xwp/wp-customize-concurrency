@@ -196,41 +196,44 @@ var customizeConcurrency = ( function( $ ) {
 
 	/**
 	 * Update the UI to indicate which other users are currently managing things in the Customizer.
+	 *
+	 * @param {object} previewedSetting
 	 */
-	self.updateConcurrentUserPresence = _.debounce( function() {
-		var container = $( '#concurrent-users' ),
-			currentUsers = {},
-			settingsChangedByUser = {},
-			addUserToCurrentUsersDisplay;
+	self.updateConcurrentUserPresence = function( previewedSetting ) {
+		var setting = wp.customize( previewedSetting.id ),
+			control, user, template, event;
 
-		self.recentlyPreviewedSettings.each( function( previewedSetting ) {
-			var author = previewedSetting.get().post_author;
-			currentUsers[ author.user_id ] = author;
-			if ( ! settingsChangedByUser[ author.user_id ] ) {
-				settingsChangedByUser[ author.user_id ] = [];
-			}
-			settingsChangedByUser[ author.user_id ].push( previewedSetting.id );
-		} );
-		container.empty();
+		if ( ! setting ) {
+			console.warn( 'updateConcurrentUserPresence: Setting does not exist: ' + previewedSetting.id );
+			return;
+		}
 
-		/**
-		 * Add a user to the display.
-		 *
-		 * @param {object} user
-		 * @param {string} user.display_name
-		 * @param {int} user.user_id
-		 * @param {object} user.avatar
-		 */
-		addUserToCurrentUsersDisplay = function( user ) {
-			var img = $( '<img>', {
-				src: user.avatar.url,
-				title: self.l10n.concurrentUserTooltip.replace( '%1$s', user.display_name ).replace( '%2$s', settingsChangedByUser[ user.user_id ].join( ', ' ) ),
-				alt: user.display_name
+		event = jQuery.Event( 'customize-concurrency-setting-ui-lock' );
+		$( document ).trigger( event, [ setting, previewedSetting ] );
+
+		if ( event.isDefaultPrevented() ) {
+			return;
+		}
+
+		control = wp.customize.control( previewedSetting.id );
+
+		if ( control ) {
+			control.deferred.embedded.done( function() {
+				control.container.find( '.concurrent-user' ).remove();
+
+				if ( setting.concurrencyLocked() ) {
+					user = previewedSetting.get().post_author;
+					template = wp.template( 'concurrent-user' );
+
+					control.container.append( template( {
+						src: user.avatar.url,
+						title: user.display_name,
+						alt: user.display_name
+					} ) );
+				}
 			} );
-			container.append( img );
-		};
-		_.each( currentUsers, addUserToCurrentUsersDisplay );
-	} );
+		}
+	};
 
 	/**
 	 * Update the state of a setting that was updated by another user.
@@ -267,8 +270,10 @@ var customizeConcurrency = ( function( $ ) {
 			setting._dirty = false;
 		}
 
+		self.updateConcurrentUserPresence( previewedSetting );
+
 		event = jQuery.Event( 'customize-concurrency-setting-locked' );
-		$( document ).trigger( event, [ setting ] );
+		$( document ).trigger( event, [ setting, previewedSetting, self ] );
 	};
 
 	/**
@@ -302,6 +307,7 @@ var customizeConcurrency = ( function( $ ) {
 
 			setting._dirty = false;
 			setting.concurrencyLocked( false );
+			self.updateConcurrentUserPresence( previewedSetting );
 
 			// Was added to the UI, and is now removed so we need to force a refresh.
 			if ( ! hasOriginal ) {
@@ -363,10 +369,9 @@ var customizeConcurrency = ( function( $ ) {
 				settingUpdate = settingItem.data;
 
 			event = jQuery.Event( 'customize-concurrency-setting-update' );
-			$( document ).trigger( event, [ id, settingUpdate ] );
+			$( document ).trigger( event, [ id, settingUpdate, self ] );
 
 			if ( event.isDefaultPrevented() ) {
-				self.updateRecentlyPreviewedSetting( id, settingUpdate );
 				return;
 			}
 
@@ -483,13 +488,7 @@ var customizeConcurrency = ( function( $ ) {
 			self.updateRecentlyPreviewedSetting( settingId, previewedSetting );
 		} );
 
-		$( '#customize-footer-actions' ).append( '<div id="concurrent-users"></div>' );
-
 		wp.customize.previewer.query = self.prepareQueryData;
-
-		self.recentlyPreviewedSettings.bind( 'add',    self.updateConcurrentUserPresence );
-		self.recentlyPreviewedSettings.bind( 'change', self.updateConcurrentUserPresence );
-		self.recentlyPreviewedSettings.bind( 'remove', self.updateConcurrentUserPresence );
 
 		self.recentlyPreviewedSettings.bind( 'add',    self.updatePreviewedSettingLockedState );
 		self.recentlyPreviewedSettings.bind( 'change', self.updatePreviewedSettingLockedState );
@@ -555,8 +554,6 @@ var customizeConcurrency = ( function( $ ) {
 		self.recentlyPreviewedSettings.each( function( previewedSetting ) {
 			self.updatePreviewedSettingLockedState( previewedSetting );
 		} );
-
-		self.updateConcurrentUserPresence();
 	};
 
 	// Boot.

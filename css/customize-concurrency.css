@@ -1,23 +1,44 @@
-.collapse-sidebar-label {
-	display: none !important;
-}
-
-.concurrency-locked {
+.concurrency-locked > *:not(.concurrent-user) {
 	opacity: 0.5;
 	cursor: not-allowed;
 	pointer-events: none;
 }
 
-#concurrent-users {
-	bottom: 6px;
-	padding-left: 40px;
-	position: absolute;
-	right: 14px;
-	z-index: 1000001;
+.concurrent-user {
+	display: none;
 }
 
-#concurrent-users img {
-	height: 18px;
-	margin: 0 0 4px 4px;
-	width: 18px;
+.concurrency-locked .concurrent-user {
+	display: block;
+	text-align: center;
+	padding: 5px 0 10px;
+}
+
+.customize-control-widget_form.concurrency-locked,
+.customize-control-sidebar_widgets.concurrency-locked {
+	position: relative;
+}
+
+.customize-control-widget_form.concurrency-locked .concurrent-user,
+.customize-control-sidebar_widgets.concurrency-locked .concurrent-user {
+	position: absolute;
+	top: 0;
+	z-index: 10000;
+}
+
+.customize-control-widget_form.concurrency-locked .concurrent-user {
+	padding-top: 14px;
+	left: 0;
+	right: 0;
+}
+
+.concurrency-locked .concurrent-user img {
+	height: 16px;
+	margin: 2px;
+	width: 16px;
+}
+
+.customize-control-widget_form.concurrency-locked .concurrent-user img,
+.customize-control-sidebar_widgets.concurrency-locked .concurrent-user img {
+	margin-top: 1px;
 }

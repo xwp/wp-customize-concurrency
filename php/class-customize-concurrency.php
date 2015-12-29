@@ -54,6 +54,7 @@ class Customize_Concurrency {
 
 		add_action( 'init', array( $this, 'register_post_type' ) );
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
+		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_action( 'wp_ajax_' . self::AJAX_ACTION, array( $this, 'ajax_customize_settings_previewed' ) );
 		add_action( 'save_post_' . self::POST_TYPE, array( $this, 'handle_insert_customize_previewed_post' ), 10, 3 );
 		add_action( 'delete_post', array( $this, 'handle_delete_customize_previewed_post' ) );
@@ -128,6 +129,20 @@ class Customize_Concurrency {
 		wp_enqueue_script( 'customize-concurrency' );
 		wp_enqueue_style( 'customize-concurrency' );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'export_js_data' ), 1 );
+	}
+
+	/**
+	 * Underscore (JS) templates for concurrency locking.
+	 */
+	public function customize_controls_print_footer_scripts() {
+		?>
+		<script type="text/html" id="tmpl-concurrent-user">
+			<div class="concurrent-user">
+				<span class="dashicons dashicons-lock"></span>
+				<img src="{{ data.src }}" title="{{ data.title }}" alt="{{ data.alt }}" />
+			</div>
+		</script>
+		<?php
 	}
 
 	/**
@@ -747,5 +762,43 @@ class Customize_Concurrency {
 				'size' => 40,
 			) ),
 		);
+	}
+	
+	/**
+	 * Replaces the "Customize" link in the Toolbar.
+	 *
+	 * @param \WP_Admin_Bar $wp_admin_bar WP_Admin_Bar instance.
+	 */
+	public function customize_menu( $wp_admin_bar ) {
+		// Don't show for users who can't access the customizer or when in the admin.
+		if ( ! current_user_can( 'customize' ) || is_admin() ) {
+			return;
+		}
+
+		$current_url = remove_query_arg( array( 'customize_snapshot_uuid', 'scope' ), $this->current_url() );
+
+		$args = array();
+		$uuid = isset( $_GET['customize_snapshot_uuid'] ) ? sanitize_key( wp_unslash( $_GET['customize_snapshot_uuid'] ) ) : null; // WPCS: input var ok.
+		$scope = isset( $_GET['scope'] ) ? sanitize_key( wp_unslash( $_GET['scope'] ) ) : 'dirty'; // WPCS: input var ok.
+
+		if ( $uuid && $this->snapshot->is_valid_uuid( $uuid ) ) {
+			$args['customize_snapshot_uuid'] = $uuid;
+			$args['scope'] = ( 'dirty' !== $scope ? 'full' : 'dirty' );
+		}
+
+		$args['url'] = urlencode( $current_url );
+		$customize_url = add_query_arg( $args, wp_customize_url() );
+
+		$wp_admin_bar->add_menu(
+			array(
+				'id'     => 'customize',
+				'title'  => __( 'Customize', 'customize-snapshots' ),
+				'href'   => $customize_url,
+				'meta'   => array(
+					'class' => 'hide-if-no-customize',
+				),
+			)
+		);
+		add_action( 'wp_before_admin_bar_render', 'wp_customize_support_script' );
 	}
 }

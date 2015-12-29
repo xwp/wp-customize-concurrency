@@ -1,6 +1,5 @@
 {
 	"require-dev": {
-		"php" : ">=5.5.0",
 		"satooshi/php-coveralls": "dev-master"
 	}
 }

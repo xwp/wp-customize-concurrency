@@ -31,4 +31,4 @@ script:
     - source $DEV_LIB_PATH/travis.script.sh
 
 after_success:
-    - source $DEV_LIB_PATH/travis.after_script.sh
+    - if [ -e .coveralls.yml ]; then travis_retry php vendor/bin/coveralls -v; fi

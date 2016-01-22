@@ -1,1 +1,2 @@
+CHECK_SCOPE=all
 PATH_INCLUDES="*.* php js css tests"

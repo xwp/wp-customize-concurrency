@@ -5,6 +5,8 @@ language:
     - node_js
 
 php:
+    - 5.3
+    - 5.4
     - 5.5
     - 5.6
     - 7.0
@@ -28,5 +30,5 @@ install:
 script:
     - source $DEV_LIB_PATH/travis.script.sh
 
-after_script:
+after_success:
     - source $DEV_LIB_PATH/travis.after_script.sh

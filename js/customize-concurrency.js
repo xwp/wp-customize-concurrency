@@ -1,4 +1,5 @@
-/*global _customizeConcurrency, _ , JSON*/
+/* exported customizeConcurrency */
+/* global _customizeConcurrency, _ , JSON, console */
 var customizeConcurrency = ( function( $ ) {
 	var self = {
 		action: '',
@@ -314,8 +315,10 @@ var customizeConcurrency = ( function( $ ) {
 				switch ( setting.transport ) {
 					case 'refresh':
 						wp.customize.previewer.refresh();
+						break;
 					case 'postMessage':
 						wp.customize.previewer.send( 'setting', [ setting.id, wp.customize() ] );
+						break;
 				}
 			}
 		}

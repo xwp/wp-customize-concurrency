@@ -50,7 +50,7 @@ class Plugin extends Plugin_Base {
 	 */
 	function register_scripts( \WP_Scripts $wp_scripts ) {
 		$src = $this->dir_url . 'js/customize-concurrency.js';
-		$deps = array( 'heartbeat', 'customize-widgets', 'underscore' );
+		$deps = array( 'customize-widgets', 'underscore' );
 		$wp_scripts->add( $this->slug, $src, $deps );
 		$wp_scripts->add_data( $this->slug, 'group', 1 ); // 1 = in_footer.
 	}

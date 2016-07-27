@@ -49,10 +49,6 @@ class Plugin extends Plugin_Base {
 	 * @action wp_default_scripts
 	 */
 	function register_scripts( \WP_Scripts $wp_scripts ) {
-		$src = $this->dir_url . 'js/customize-concurrency.js';
-		$deps = array( 'customize-widgets', 'underscore' );
-		$wp_scripts->add( $this->slug, $src, $deps );
-		$wp_scripts->add_data( $this->slug, 'group', 1 ); // 1 = in_footer.
 	}
 
 	/**
@@ -62,8 +58,5 @@ class Plugin extends Plugin_Base {
 	 * @action wp_default_styles
 	 */
 	function register_styles( \WP_Styles $wp_styles ) {
-		$src = $this->dir_url . 'css/customize-concurrency.css';
-		$deps = array( 'customize-controls' );
-		$wp_styles->add( $this->slug, $src, $deps );
 	}
 }

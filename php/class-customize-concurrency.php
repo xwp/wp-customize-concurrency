@@ -21,7 +21,7 @@ class Customize_Concurrency {
 	 *
 	 * @var string $POST_TYPE
 	 */
-	const POST_TYPE = 'custom_saved_setting';
+	const POST_TYPE = 'customize_c9y';
 
 	/**
 	 * Plugin instance.
@@ -43,6 +43,13 @@ class Customize_Concurrency {
 	 * @var bool
 	 */
 	protected $kses_suspended = false;
+
+	/**
+	 * Any settings that have been saved previously.
+	 *
+	 * @var array $saved_settings
+	 */
+	protected $saved_settings = null;
 
 	/**
 	 * Constructor.
@@ -86,17 +93,33 @@ class Customize_Concurrency {
 	 * @action customize_controls_enqueue_scripts
 	 */
 	public function customize_controls_enqueue_scripts() {
-		wp_enqueue_script( 'wp-customize-concurrency' );
+		wp_enqueue_script( $this->plugin->slug );
 	}
 
 	/**
-	 * Put timestamp and footer in hidden field.
-	 *
-	 * todo: find a better way to get this into what is sent via ajax
+	 * Send timestamps and user ids to JS.
 	 */
 	public function customize_controls_print_footer_scripts() {
-		printf( '<input type="hidden" id="customizer_session_timestamp" value="%s" />', time() );
-		printf( '<input type="hidden" id="current_user_id" value="%s" />', get_current_user_id() );
+		$saved_settings = $this->get_saved_settings();
+
+		$data = array(
+			'saved_settings' => array(
+				array(
+					'setting_id' => 'test[setting]',
+					'author' => '1',
+					'timestamp' => '1470045708',
+				),
+			),
+			'session_start_timestamp' => time(),
+			'current_user_id' => wp_get_current_user()->ID,
+		);
+
+		foreach ( $saved_settings as $setting_id => $saved_setting ) {
+			$data['saved_settings'][] = array(
+			);
+		}
+
+		printf( '<script>var _customizeConcurrency = %s;</script>', wp_json_encode( $data ) );
 	}
 
 	/**
@@ -121,29 +144,19 @@ class Customize_Concurrency {
 		$customizer_session_timestamp = isset( $_POST['customizer_session_timestamp'] ) ? intval( $_POST['customizer_session_timestamp'] ) : time();
 
 		$post_values = $wp_customize->unsanitized_post_values();
-		$setting_ids = array_keys( $post_values );
 		$invalidities = array();
-		$customize_saved_setting_posts = new \WP_Query( array(
-			'post_name__in' => $setting_ids,
-			'update_post_meta_cache' => false,
-			'update_post_term_cache' => false,
-			'post_type' => self::POST_TYPE,
-			'posts_per_page' => -1,
-			'ignore_sticky_posts' => true,
-		) );
+		$saved_settings = $this->get_saved_settings();
 
-		foreach ( $customize_saved_setting_posts->posts as $setting_post ) {
-			$setting_id = $setting_post->post_name;
-			$existing_value = json_decode( $setting_post->post_content, true );
+		foreach ( $saved_settings as $setting_id => $saved_setting ) {
 			$is_conflicted = (
-				strtotime( $setting_post->post_modified_gmt ) > $customizer_session_timestamp
+				$saved_setting['timestamp'] > $customizer_session_timestamp
 				&&
 				isset( $post_values[ $setting_id ] )
 				&&
-				$existing_value !== $post_values[ $setting_id ]
+				$saved_setting['value'] !== $post_values[ $setting_id ]
 			);
 			if ( $is_conflicted ) {
-				$invalidities[ $setting_id ] = new \WP_Error( 'concurrency_conflict', __( 'Concurrency conflict' ), array( 'their_value' => $existing_value ) );
+				$invalidities[ $setting_id ] = new \WP_Error( 'concurrency_conflict', __( 'Concurrency conflict' ), array( 'their_value' => $saved_setting['value'] ) );
 			}
 		}
 
@@ -162,10 +175,19 @@ class Customize_Concurrency {
 
 	}
 
+	/**
+	 * Store update history with timestamps.
+	 *
+	 * We can skip this for snapshots and just make sure to save usernames and timestamps in the snapshot.
+	 */
 	public function customize_save_after() {
 
 		$post_values = $this->customize_manager->unsanitized_post_values();
 		$setting_ids = array_keys( $post_values );
+		$saved_settings = $this->get_saved_settings();
+
+		$this->suspend_kses();
+		$r = array();
 
 		foreach ( $setting_ids as $setting_id ) {
 			$setting = $this->customize_manager->get_setting( $setting_id );
@@ -173,9 +195,11 @@ class Customize_Concurrency {
 				continue;
 			}
 
+			$is_update = isset( $saved_settings[ $setting_id ]['post_id'] );
+
 			$post_data = array(
 				'post_type' => self::POST_TYPE,
-				'post_status' => 'draft',
+				'post_status' => 'publish',
 				'post_title' => $setting_id,
 				'post_name' => $setting_id,
 				'post_content_filtered' => wp_json_encode( $post_values[ $setting_id ] ),
@@ -184,10 +208,50 @@ class Customize_Concurrency {
 				'post_author' => get_current_user_id(),
 			);
 
-			$this->suspend_kses();
-				wp_insert_post( $post_data, true );
-			$this->restore_kses();
+			if ( $is_update ) {
+				$post_data['ID'] = $saved_settings[ $setting_id ]['post_id'];
+				$r[] = wp_update_post( wp_slash( $post_data ), true );
+			} else {
+				$r[] = wp_insert_post( wp_slash( $post_data ), true );
+			}
 		}
+
+		$this->restore_kses();
+		// Todo: check $r for errors - most like case we would care about is two sessions writing to the same post
+	}
+
+	/**
+	 * Get saved settings from default post storage or from snapshot storage.
+	 *
+	 * Todo: read from snapshots instead if available.
+	 * Todo: invalidate/update when object-cached
+	 *
+	 * @return array
+	 */
+	function get_saved_settings() {
+		if ( null === $this->saved_settings ) {
+			$this->saved_settings = array();
+
+			$saved_setting_posts = new \WP_Query(array(
+				'post_name__in' => array_keys( $this->customize_manager->unsanitized_post_values() ),
+				'post_type' => self::POST_TYPE,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+				'posts_per_page' => -1,
+				'ignore_sticky_posts' => true,
+			));
+
+			foreach ( $saved_setting_posts->posts as $setting_post ) {
+				$this->saved_settings[ $setting_post->post_name ] = array(
+					'post_id' => $setting_post->ID,
+					'value' => json_decode( $setting_post->post_content, true ),
+					'timestamp' => strtotime( $setting_post->post_modified_gmt ),
+					'author' => $setting_post->post_author,
+				);
+			}
+		}
+
+		return $this->saved_settings;
 	}
 
 	/**

@@ -25,8 +25,18 @@
 	 */
 	component.init = function() {
 		api.bind( 'ready', function() {
-			api.bind( 'change', function() {
-				// todo: update concurrency data
+			component.data['settingModifiedTimes'] = {};
+
+			api.each( function( setting ) {
+				component.data.settingModifiedTimes[ setting.id ] = new Date().valueOf();
+			} );
+
+			api.bind( 'add', function( setting ) {
+				component.data['settingModifiedTimes'][ setting.id ] = new Date().valueOf();
+			} );
+
+			api.bind( 'change', function( setting ) {
+				component.data['settingModifiedTimes'][ setting.id ] = new Date().valueOf();
 			} );
 
 			component.extendPreviewerQuery();
@@ -45,8 +55,13 @@
 
 		api.previewer.query = function() {
 			var retval = originalQuery.apply( this, arguments );
-			// todo: move _customizeConcurrency and all updates into component.data so we can use that instead of _customizeConcurrency
-			retval.saved_settings = _customizeConcurrency.saved_settings;
+					retval.concurrency_setting_modified_timestamps = {};
+					api.each( function( setting ) {
+						if ( setting._dirty && component.data.settingModifiedTimes[ setting.id ] ) {
+							retval.concurrency_setting_modified_timestamps[ setting.id ] = component.data.settingModifiedTimes[ setting.id ];
+						}
+					} );
+
 			retval.session_start_timestamp = _customizeConcurrency.session_start_timestamp;
 			retval.current_user_id = _customizeConcurrency.current_user_id;
 			return retval;

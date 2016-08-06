@@ -67,7 +67,7 @@ class Customize_Concurrency {
 
 		add_action( 'init', array( $this, 'register_post_type' ) );
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
-		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
+//		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
 		add_action( 'customize_save', array( $this, 'customize_save' ), 1000 );
 	}
@@ -98,7 +98,7 @@ class Customize_Concurrency {
 
 	/**
 	 * Send timestamps and user ids to JS.
-	 */
+	 *
 	public function customize_controls_print_footer_scripts() {
 		$saved_settings = $this->get_saved_settings();
 
@@ -141,19 +141,19 @@ class Customize_Concurrency {
 
 	public function customize_save ( \WP_Customize_Manager $wp_customize ) {
 
-		$customizer_session_timestamp = isset( $_POST['customizer_session_timestamp'] ) ? intval( $_POST['customizer_session_timestamp'] ) : time();
-
 		$post_values = $wp_customize->unsanitized_post_values();
 		$invalidities = array();
 		$saved_settings = $this->get_saved_settings();
+		$timestamps = isset( $_POST['concurrency_timestamps'] ) ? $_POST['concurrency_timestamps'] : array();
 
-		foreach ( $saved_settings as $setting_id => $saved_setting ) {
+		foreach ( $post_values as $setting_id => $post_value ) {
+			$saved_setting = isset( $saved_settings[ $setting_id ] ) ? $saved_settings[ $setting_id ] : array();
 			$is_conflicted = (
-				$saved_setting['timestamp'] > $customizer_session_timestamp
+				isset( $saved_setting[ 'timestamp' ], $saved_setting[ 'value' ] )
 				&&
-				isset( $post_values[ $setting_id ] )
+				$saved_setting['timestamp'] > $timestamps[ $setting_id ]
 				&&
-				$saved_setting['value'] !== $post_values[ $setting_id ]
+				$saved_setting['value'] !== $post_value
 			);
 			if ( $is_conflicted ) {
 				$invalidities[ $setting_id ] = new \WP_Error( 'concurrency_conflict', __( 'Concurrency conflict' ), array( 'their_value' => $saved_setting['value'] ) );
@@ -217,7 +217,7 @@ class Customize_Concurrency {
 		}
 
 		$this->restore_kses();
-		// Todo: check $r for errors - most like case we would care about is two sessions writing to the same post
+		// Todo: check $r for errors - most likely case we would care about is two sessions writing to the same post
 	}
 
 	/**

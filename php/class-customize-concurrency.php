@@ -45,11 +45,11 @@ class Customize_Concurrency {
 	protected $kses_suspended = false;
 
 	/**
-	 * Any settings that have been saved previously.
+	 * Title of post (setting id) before being destroyed by sanitize_post
 	 *
-	 * @var array $saved_settings
+	 * @var string $saved_setting_title
 	 */
-	protected $saved_settings = null;
+	protected $saved_setting_title = '';
 
 	/**
 	 * Constructor.
@@ -67,9 +67,11 @@ class Customize_Concurrency {
 
 		add_action( 'init', array( $this, 'register_post_type' ) );
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
-//		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
+		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
 		add_action( 'customize_save', array( $this, 'customize_save' ), 1000 );
+		add_action( 'customize_save_after', array( $this, 'customize_save_after' ) );
+		add_action( 'customize_save_response', array( $this, 'customize_save_response' ) );
 	}
 
 	/**
@@ -97,30 +99,16 @@ class Customize_Concurrency {
 	}
 
 	/**
-	 * Send timestamps and user ids to JS.
-	 *
+	 * Send timestamp for when this session started.
+	 */
 	public function customize_controls_print_footer_scripts() {
-		$saved_settings = $this->get_saved_settings();
-
 		$data = array(
-			'saved_settings' => array(
-				array(
-					'setting_id' => 'test[setting]',
-					'author' => '1',
-					'timestamp' => '1470045708',
-				),
-			),
-			'session_start_timestamp' => time(),
-			'current_user_id' => wp_get_current_user()->ID,
+			'session_start_timestamp' => strtotime( current_time( 'mysql', true ) ),
 		);
-
-		foreach ( $saved_settings as $setting_id => $saved_setting ) {
-			$data['saved_settings'][] = array(
-			);
-		}
 
 		printf( '<script>var _customizeConcurrency = %s;</script>', wp_json_encode( $data ) );
 	}
+
 
 	/**
 	 * Prevent sanitize_title() on the post_name.
@@ -142,21 +130,23 @@ class Customize_Concurrency {
 	public function customize_save ( \WP_Customize_Manager $wp_customize ) {
 
 		$post_values = $wp_customize->unsanitized_post_values();
-		$invalidities = array();
 		$saved_settings = $this->get_saved_settings();
-		$timestamps = isset( $_POST['concurrency_timestamps'] ) ? $_POST['concurrency_timestamps'] : array();
+		$timestamps = isset( $_POST['concurrency_timestamps'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_timestamps'] ) ) : array();
 
-		foreach ( $post_values as $setting_id => $post_value ) {
-			$saved_setting = isset( $saved_settings[ $setting_id ] ) ? $saved_settings[ $setting_id ] : array();
+		$invalidities = array();
+
+		foreach ( $saved_settings as $setting_id => $saved_setting ) {
 			$is_conflicted = (
 				isset( $saved_setting[ 'timestamp' ], $saved_setting[ 'value' ] )
 				&&
 				$saved_setting['timestamp'] > $timestamps[ $setting_id ]
 				&&
-				$saved_setting['value'] !== $post_value
+				$saved_setting['value'] !== $post_values[ $setting_id ]
 			);
 			if ( $is_conflicted ) {
-				$invalidities[ $setting_id ] = new \WP_Error( 'concurrency_conflict', __( 'Concurrency conflict' ), array( 'their_value' => $saved_setting['value'] ) );
+				$user = get_user_by( 'ID', (int) $saved_setting['author'] );
+				$message = sprintf( 'Value from %s: %s', $user->user_nicename, $saved_setting['value'] );
+				$invalidities[ $setting_id ] = new \WP_Error( 'concurrency_conflict', $message, array( 'their_value' => $saved_setting['value'] ) );
 			}
 		}
 
@@ -165,7 +155,10 @@ class Customize_Concurrency {
 			$invalid_setting_count = count( $exported_setting_validities );
 			$response = array(
 				'setting_validities' => $exported_setting_validities,
-				'message' => sprintf( _n( 'There is %s invalid setting.', 'There are %s invalid settings.', $invalid_setting_count ), number_format_i18n( $invalid_setting_count ) ),
+				'message' => sprintf(
+					_n( 'There is %s conflicting setting.', 'There are %s conflicting settings.', $invalid_setting_count ),
+					number_format_i18n( $invalid_setting_count )
+				),
 			);
 
 			/** This filter is documented in wp-includes/class-wp-customize-manager.php */
@@ -178,7 +171,7 @@ class Customize_Concurrency {
 	/**
 	 * Store update history with timestamps.
 	 *
-	 * We can skip this for snapshots and just make sure to save usernames and timestamps in the snapshot.
+	 * todo: use snapshots when applicable.
 	 */
 	public function customize_save_after() {
 
@@ -217,41 +210,47 @@ class Customize_Concurrency {
 		}
 
 		$this->restore_kses();
-		// Todo: check $r for errors - most likely case we would care about is two sessions writing to the same post
+		// Todo: check $r for errors
+	}
+
+	public function customize_save_response( $response ) {
+		$response['concurrency_session_timestamp'] = strtotime( current_time( 'mysql', true ) );
+		return $response;
 	}
 
 	/**
 	 * Get saved settings from default post storage or from snapshot storage.
 	 *
-	 * Todo: read from snapshots instead if available.
-	 * Todo: invalidate/update when object-cached
+	 * Todo: read from snapshots when applicable.
 	 *
 	 * @return array
 	 */
 	function get_saved_settings() {
-		if ( null === $this->saved_settings ) {
-			$this->saved_settings = array();
+		$saved_settings = array();
 
-			$saved_setting_posts = new \WP_Query(array(
-				'post_name__in' => array_keys( $this->customize_manager->unsanitized_post_values() ),
-				'post_type' => self::POST_TYPE,
-				'update_post_meta_cache' => false,
-				'update_post_term_cache' => false,
-				'posts_per_page' => -1,
-				'ignore_sticky_posts' => true,
-			));
+		add_filter( 'sanitize_title', array( $this, 'sanitize_title_for_query' ), 10, 3 );
+		$saved_setting_posts = new \WP_Query(array(
+			'post_name__in' => array_keys( $this->customize_manager->unsanitized_post_values() ),
+			'post_type' => self::POST_TYPE,
+			'post_status' => 'publish',
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
+			'posts_per_page' => -1,
+			'ignore_sticky_posts' => true,
+		));
+		remove_filter( 'sanitize_title', array( $this, 'sanitize_title_for_query' ) );
 
-			foreach ( $saved_setting_posts->posts as $setting_post ) {
-				$this->saved_settings[ $setting_post->post_name ] = array(
-					'post_id' => $setting_post->ID,
-					'value' => json_decode( $setting_post->post_content, true ),
-					'timestamp' => strtotime( $setting_post->post_modified_gmt ),
-					'author' => $setting_post->post_author,
-				);
-			}
+		foreach ( $saved_setting_posts->posts as $setting_post ) {
+
+			$saved_settings[ $setting_post->post_name ] = array(
+				'post_id' => $setting_post->ID,
+				'value' => json_decode( $setting_post->post_content_filtered, true ),
+				'timestamp' => strtotime( $setting_post->post_modified_gmt ),
+				'author' => $setting_post->post_author,
+			);
 		}
 
-		return $this->saved_settings;
+		return $saved_settings;
 	}
 
 	/**
@@ -278,4 +277,21 @@ class Customize_Concurrency {
 		}
 	}
 
+	/**
+	 * Keep square brackets from being removed when the title is sanitized for the query in $this->get_saved_settings()
+	 *
+	 * @see get_saved_settings()
+	 * @filter sanitize_title
+	 *
+	 * @param $title     string Sanitized title without the needed brackets
+	 * @param $raw_title string Original title to revert to if the only difference is square brackets
+	 * @param $context   string
+	 * @return string
+	 */
+	function sanitize_title_for_query( $title, $raw_title, $context ) {
+		if ( 'query' === $context && preg_replace( '/[\[\]]/', '', $raw_title ) === $title ) {
+			return $raw_title;
+		}
+		return $title;
+	}
 }

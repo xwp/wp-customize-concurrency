@@ -1,4 +1,3 @@
-/* global jQuery, _customizeConcurrency */
 /* eslint-disable no-extra-parens */
 
 ( function( api ) {
@@ -22,17 +21,20 @@
 	component.init = function() {
 		api.bind( 'ready', function() {
 			api.each( function( setting ) {
-				component.data[ setting.id ] = new Date().valueOf();
+				setting['concurrency_timestamp'] = _customizeConcurrency.session_start_timestamp;
 			} );
 
 			api.bind( 'add', function( setting ) {
-				component.data[ setting.id ] = new Date().valueOf();
-//				component.data['function'][ setting.id ] = 'add';
+				// todo get the timestamp into the ajax response when additional settings are loaded so that we can use it here
+				setting['concurrency_timestamp'] = _customizeConcurrency.session_start_timestamp;
 			} );
 
-			api.bind( 'change', function( setting ) {
-				component.data[ setting.id ] = new Date().valueOf();
-//				component.data['function'][ setting.id ] = 'change';
+			api.bind( 'saved', function( data ) {
+				wp.customize.each( function( setting ) {
+					if ( data.saved_post_setting_values.hasOwnProperty( setting.ID ) ) {
+						setting['concurrency_timestamp'] = data.concurrency_session_timestamp;
+					}
+				} );
 			} );
 
 			component.extendPreviewerQuery();
@@ -50,14 +52,15 @@
 		var originalQuery = api.previewer.query;
 
 		api.previewer.query = function() {
-			var retval = originalQuery.apply( this, arguments );
-			retval.concurrency_timestamps = {};
+			var retval = originalQuery.apply( this, arguments ), timestamps = {};
 
 			api.each( function( setting ) {
-				if ( setting._dirty && component.data[ setting.id ] ) {
-					retval.concurrency_timestamps[ setting.id ] = component.data[ setting.id ];
+				if ( setting._dirty ) {
+					timestamps[ setting.id ] = setting.concurrency_timestamp;
 				}
 			} );
+			retval.concurrency_timestamps = JSON.stringify( timestamps );
+
 			return retval;
 		};
 	};

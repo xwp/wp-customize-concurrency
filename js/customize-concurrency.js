@@ -1,3 +1,4 @@
+/* global wp, _, _customizeConcurrency, JSON */
 /* eslint-disable no-extra-parens */
 
 ( function( api ) {

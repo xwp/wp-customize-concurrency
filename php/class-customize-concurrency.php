@@ -107,6 +107,21 @@ class Customize_Concurrency {
 		);
 
 		printf( '<script>var _customizeConcurrency = %s;</script>', wp_json_encode( $data ) );
+
+		?>
+		<script type="text/html" id="tmpl-customize-post-section-notifications">
+			<ul>
+				<# _.each( data.notifications, function( notification ) { #>
+					<li class="notice notice-{{ notification.type || 'info' }} {{ data.altNotice ? 'notice-alt' : '' }}" data-code="{{ notification.code }}" data-type="{{ notification.type }}">
+						<# if ( /setting_update_conflict/.test( notification.code ) ) { #>
+							<button class="button override-post-conflict" type="button"><?php esc_html_e( 'Override', 'customize-posts' ); ?></button>
+							<# } #>
+								{{ notification.message || notification.code }}
+					</li>
+					<# } ); #>
+			</ul>
+		</script>
+		<?php
 	}
 
 

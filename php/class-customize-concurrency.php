@@ -130,7 +130,7 @@ class Customize_Concurrency {
 	public function customize_save ( \WP_Customize_Manager $wp_customize ) {
 
 		$post_values = $wp_customize->unsanitized_post_values();
-		$saved_settings = $this->get_saved_settings();
+		$saved_settings = $this->get_saved_settings( array_keys( $post_values ) );
 		$timestamps = isset( $_POST['concurrency_timestamps'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_timestamps'] ) ) : array();
 
 		$invalidities = array();
@@ -177,7 +177,7 @@ class Customize_Concurrency {
 
 		$post_values = $this->customize_manager->unsanitized_post_values();
 		$setting_ids = array_keys( $post_values );
-		$saved_settings = $this->get_saved_settings();
+		$saved_settings = $this->get_saved_settings( $setting_ids );
 
 		$this->suspend_kses();
 		$r = array();
@@ -225,12 +225,12 @@ class Customize_Concurrency {
 	 *
 	 * @return array
 	 */
-	function get_saved_settings() {
+	function get_saved_settings( $setting_ids ) {
 		$saved_settings = array();
 
 		add_filter( 'sanitize_title', array( $this, 'sanitize_title_for_query' ), 10, 3 );
 		$saved_setting_posts = new \WP_Query(array(
-			'post_name__in' => array_keys( $this->customize_manager->unsanitized_post_values() ),
+			'post_name__in' => $setting_ids,
 			'post_type' => self::POST_TYPE,
 			'post_status' => 'publish',
 			'update_post_meta_cache' => false,

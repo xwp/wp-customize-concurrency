@@ -20,21 +20,28 @@
 	 */
 	component.init = function() {
 		api.bind( 'ready', function() {
+			_.extend( component.data, _customizeConcurrency );
+
 			api.each( function( setting ) {
-				setting['concurrency_timestamp'] = _customizeConcurrency.session_start_timestamp;
+				setting['concurrency_timestamp'] = component.data.session_start_timestamp;
 			} );
 
 			api.bind( 'add', function( setting ) {
-				// todo get the timestamp into the ajax response when additional settings are loaded so that we can use it here
-				setting['concurrency_timestamp'] = _customizeConcurrency.session_start_timestamp;
+				setting['concurrency_timestamp'] = component.data.session_start_timestamp;
 			} );
 
 			api.bind( 'saved', function( data ) {
-				wp.customize.each( function( setting ) {
-					if ( data.saved_post_setting_values.hasOwnProperty( setting.ID ) ) {
-						setting['concurrency_timestamp'] = data.concurrency_session_timestamp;
+				if ( ! data.concurrency_session_timestamp || ! data.setting_validities ) {
+					return;
+				}
+				_.each( data.setting_validities, function( validity, settingId ) {
+					var setting = api( settingId );
+					if ( setting && true === validity ) {
+						setting.concurrency_timestamp = data.concurrency_session_timestamp;
 					}
 				} );
+
+				component.data.session_start_timestamp = data.concurrency_session_timestamp;
 			} );
 
 			component.extendPreviewerQuery();

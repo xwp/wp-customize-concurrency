@@ -62,5 +62,8 @@ class Plugin extends Plugin_Base {
 	 * @action wp_default_styles
 	 */
 	function register_styles( \WP_Styles $wp_styles ) {
+		$src = $this->dir_url . 'css/customize-concurrency.css';
+		$deps = array( 'customize-controls' );
+		$wp_styles->add( $this->slug, $src, $deps );
 	}
 }

@@ -1,0 +1,11 @@
+.button.concurrency-conflict {
+	float: right;
+}
+
+.button.concurrency-conflict .dashicons-thumbs-down {
+	line-height: 28px;
+}
+
+.button.concurrency-conflict .dashicons-thumbs-up {
+	line-height: 24px;
+}

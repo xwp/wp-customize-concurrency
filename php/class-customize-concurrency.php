@@ -96,6 +96,7 @@ class Customize_Concurrency {
 	 */
 	public function customize_controls_enqueue_scripts() {
 		wp_enqueue_script( $this->plugin->slug );
+		wp_enqueue_style( $this->plugin->slug );
 	}
 
 	/**
@@ -198,6 +199,12 @@ class Customize_Concurrency {
 
 		$post_values = $this->customize_manager->unsanitized_post_values();
 		$setting_ids = array_keys( $post_values );
+
+		// Exclude post field settings since these are already conflict checked by customize-post plugin.
+		$setting_ids = array_filter( $setting_ids, function( $setting_id ) {
+			return ( 0 !== strpos( $setting_id, 'post[' ) ) ? $setting_id : false;
+		});
+
 		$saved_settings = $this->get_saved_settings( $setting_ids );
 
 		$this->suspend_kses();

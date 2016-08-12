@@ -59,9 +59,7 @@
 								message: component.notificationsTemplate
 							} );
 							control.notificationsTemplate = wp.template( 'customize-concurrency-notifications' );
-							control.renderNotifications;
-							// control.notifications.remove( notification.code );
-							// control.notifications.add( notification.code, notification );
+							control.renderNotifications();
 						}
 					}
 				} );
@@ -70,31 +68,10 @@
 			component.extendPreviewerQuery();
 
 		} );
-
-		wp.customize( 'established_year', function ( setting ) {
-			setting.validate = function ( value ) {
-				var code, notification;
-				var year = parseInt( value, 10 );
-
-				code = 'required';
-				if ( isNaN( year ) ) {
-					notification = new wp.customize.Notification( code, {message: myPlugin.l10n.requiredYear} );
-					setting.notifications.add( code, notification );
-				} else {
-					setting.notifications.remove( code );
-				}
-
-				if ( isNaN( year ) ) {
-					return value;
-				}
-
-				return value;
-			};
-		} );
 	};
 
 	/**
-	 * Amend the preview query so we can update the concurrency posts during `customize_save`.
+	 * Send timestamp of last save/read to compare against other sessions.
 	 *
 	 * @return {void}
 	 */

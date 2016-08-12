@@ -46,25 +46,22 @@
 			} );
 
 			api.bind( 'error', function( response ) {
+
 				_.each( response.setting_validities, function( validity, settingId ) {
 					if ( true !== validity && validity.concurrency_conflict ) {
 						var control, section, notification, theirValue;
 
-						theirValue = validity.concurrency_conflict.data.their_value
+						theirValue = validity.concurrency_conflict.data.their_value;
 						control = api.control( settingId );
-
-						// Get section so we can put a notice at section level
-						section = control.section;
-						// see also: Customize_Concurrency::customize_controls_print_footer_scripts() where we output a template for this.
-
 
 						if ( control && control.notifications ) {
 							notification = new api.Notification( 'setting_update_conflict', {
-								// todo? maybe use our own message here
-								message: api.Posts.data.l10n.theirChange.replace( '%s', String( theirValue ) )
+								message: component.notificationsTemplate
 							} );
-							control.notifications.remove( notification.code );
-							control.notifications.add( notification.code, notification );
+							control.notificationsTemplate = wp.template( 'customize-concurrency-notifications' );
+							control.renderNotifications;
+							// control.notifications.remove( notification.code );
+							// control.notifications.add( notification.code, notification );
 						}
 					}
 				} );
@@ -74,6 +71,26 @@
 
 		} );
 
+		wp.customize( 'established_year', function ( setting ) {
+			setting.validate = function ( value ) {
+				var code, notification;
+				var year = parseInt( value, 10 );
+
+				code = 'required';
+				if ( isNaN( year ) ) {
+					notification = new wp.customize.Notification( code, {message: myPlugin.l10n.requiredYear} );
+					setting.notifications.add( code, notification );
+				} else {
+					setting.notifications.remove( code );
+				}
+
+				if ( isNaN( year ) ) {
+					return value;
+				}
+
+				return value;
+			};
+		} );
 	};
 
 	/**

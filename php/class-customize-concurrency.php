@@ -99,7 +99,7 @@ class Customize_Concurrency {
 	}
 
 	/**
-	 * Send timestamp for when this session started.
+	 * Send timestamp for when this session started and output template.
 	 */
 	public function customize_controls_print_footer_scripts() {
 		$data = array(
@@ -109,21 +109,22 @@ class Customize_Concurrency {
 		printf( '<script>var _customizeConcurrency = %s;</script>', wp_json_encode( $data ) );
 
 		?>
-		<script type="text/html" id="tmpl-customize-post-section-notifications">
+		<script type="text/html" id="tmpl-customize-concurrency-notifications">
 			<ul>
 				<# _.each( data.notifications, function( notification ) { #>
 					<li class="notice notice-{{ notification.type || 'info' }} {{ data.altNotice ? 'notice-alt' : '' }}" data-code="{{ notification.code }}" data-type="{{ notification.type }}">
-						<# if ( /setting_update_conflict/.test( notification.code ) ) { #>
-							<button class="button override-post-conflict" type="button"><?php esc_html_e( 'Override', 'customize-posts' ); ?></button>
-							<# } #>
-								{{ notification.message || notification.code }}
+						<# if ( /concurrency_conflict/.test( notification.code ) ) { #>
+							<button class="button concurrency-conflict concurrency-conflict-accept" type="button"><span class="dashicons dashicons-thumbs-up"></span></button>
+							<button class="button concurrency-conflict concurrency-conflict-override" type="button"><span class="dashicons dashicons-thumbs-down"></span></button>
+						<# } #>
+						{{ notification.message || notification.code }}
 					</li>
-					<# } ); #>
+				<# } ); #>
 			</ul>
 		</script>
 		<?php
-	}
 
+	}
 
 	/**
 	 * Prevent sanitize_title() on the post_name.
@@ -142,6 +143,7 @@ class Customize_Concurrency {
 		return $data;
 	}
 
+	// To be replaced by customize_save_validation_before
 	public function customize_save ( \WP_Customize_Manager $wp_customize ) {
 
 		$post_values = $wp_customize->unsanitized_post_values();
@@ -154,14 +156,18 @@ class Customize_Concurrency {
 			$is_conflicted = (
 				isset( $saved_setting[ 'timestamp' ], $saved_setting[ 'value' ] )
 				&&
-				$saved_setting['timestamp'] > $timestamps[ $setting_id ]
+				(true || $saved_setting['timestamp'] > $timestamps[ $setting_id ] ) // @todo - test is always true temporarily
 				&&
 				$saved_setting['value'] !== $post_values[ $setting_id ]
 			);
 			if ( $is_conflicted ) {
 				$user = get_user_by( 'ID', (int) $saved_setting['author'] );
-				$message = sprintf( 'Value from %s: %s', $user->user_nicename, $saved_setting['value'] );
-				$invalidities[ $setting_id ] = new \WP_Error( 'concurrency_conflict', $message, array( 'their_value' => $saved_setting['value'] ) );
+				$error_message = sprintf(
+					__( 'Conflict due to concurrent update by %s. Their value: %s', 'customize-posts' ),
+					$user ? $user->display_name : __( '(unknown user)', 'customize-posts' ),
+					$saved_setting['value']
+				);
+				$invalidities[ $setting_id ] = new \WP_Error( 'concurrency_conflict', $error_message, array( 'their_value' => $saved_setting['value'] ) );
 			}
 		}
 

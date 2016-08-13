@@ -69,7 +69,7 @@ class Customize_Concurrency {
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
-		add_action( 'customize_save', array( $this, 'customize_save' ), 1000 );
+		add_action( 'customize_save_validation_before', array( $this, 'customize_save_validation_before' ) );
 		add_action( 'customize_save_after', array( $this, 'customize_save_after' ) );
 		add_action( 'customize_save_response', array( $this, 'customize_save_response' ) );
 	}
@@ -144,53 +144,48 @@ class Customize_Concurrency {
 		return $data;
 	}
 
-	// To be replaced by customize_save_validation_before
-	public function customize_save ( \WP_Customize_Manager $wp_customize ) {
-
+	/**
+	 * Check all incoming values to see if any were changed between the last time we checked and when we published these
+	 * new values.
+	 *
+	 * @param \WP_Customize_Manager $wp_customize Customize Manager used to get values to be checked.
+	 */
+	public function customize_save_validation_before( \WP_Customize_Manager $wp_customize ) {
 		$post_values = $wp_customize->unsanitized_post_values();
 		$saved_settings = $this->get_saved_settings( array_keys( $post_values ) );
+
+		// @todo When publishing a snapshot outside the Customizer (e.g. from admin or WP Cron), the setting $timestamps should get supplied from modified times for setting updates in the snapshot?
 		$timestamps = isset( $_POST['concurrency_timestamps'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_timestamps'] ) ) : array();
 		$overrides = isset( $_POST['concurrency_overrides'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_overrides'] ) ) : array();
 
-		$invalidities = array();
-
-		foreach ( $saved_settings as $setting_id => $saved_setting ) {
+		$validate_concurrency_conflict = function( \WP_Error $validity, $value, \WP_Customize_Setting $setting ) use ( $timestamps, $saved_settings, $overrides ) {
+			$saved_setting = $saved_settings[ $setting->id ];
 			$is_conflicted = (
-				isset( $saved_setting[ 'timestamp' ], $saved_setting[ 'value' ] )
+				array_key_exists( $setting->id, $saved_settings )
 				&&
-				(true || $saved_setting['timestamp'] > $timestamps[ $setting_id ] ) // @todo - test is always true temporarily
+				isset( $saved_setting['timestamp'], $saved_setting['value'] )
 				&&
-				$saved_setting['value'] !== $post_values[ $setting_id ]
+				(true || $saved_setting['timestamp'] > $timestamps[ $setting->id ] ) // @todo - test is always true temporarily
 				&&
-				empty( $overrides[ $setting_id ] )
+				$saved_setting['value'] !== $value
+				&&
+				empty( $overrides[ $setting->id ] )
 			);
 			if ( $is_conflicted ) {
 				$user = get_user_by( 'ID', (int) $saved_setting['author'] );
-				$error_message = sprintf(
+				$message = sprintf(
 					__( 'Conflict due to concurrent update by %s. Their value: %s', 'customize-posts' ),
 					$user ? $user->display_name : __( '(unknown user)', 'customize-posts' ),
 					$saved_setting['value']
 				);
-				$invalidities[ $setting_id ] = new \WP_Error( 'concurrency_conflict', $error_message, array( 'their_value' => $saved_setting['value'] ) );
+				$validity->add( 'concurrency_conflict', $message, array( 'their_value' => $saved_setting['value'] ) );
 			}
+			return $validity;
+		};
+
+		foreach ( $wp_customize->settings() as $setting ) {
+			add_filter( "customize_validate_{$setting->id}", $validate_concurrency_conflict, 1000, 3 );
 		}
-
-		if ( ! empty( $invalidities ) ) {
-			$exported_setting_validities = array_map( array( $wp_customize, 'prepare_setting_validity_for_js' ), $invalidities );
-			$invalid_setting_count = count( $exported_setting_validities );
-			$response = array(
-				'setting_validities' => $exported_setting_validities,
-				'message' => sprintf(
-					_n( 'There is %s conflicting setting.', 'There are %s conflicting settings.', $invalid_setting_count ),
-					number_format_i18n( $invalid_setting_count )
-				),
-			);
-
-			/** This filter is documented in wp-includes/class-wp-customize-manager.php */
-			$response = apply_filters( 'customize_save_response', $response, $this );
-			wp_send_json_error( $response );
-		}
-
 	}
 
 	/**

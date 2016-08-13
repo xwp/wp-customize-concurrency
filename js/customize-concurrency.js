@@ -50,7 +50,7 @@
 
 				_.each( response.setting_validities, function( validity, settingId ) {
 					if ( true !== validity && validity.concurrency_conflict ) {
-						var control, section, notification, theirValue, code;
+						var control, notification, theirValue, code;
 
 						theirValue = validity.concurrency_conflict.data.their_value;
 						control = api.control( settingId );
@@ -106,4 +106,3 @@
 	component.init();
 
 } )( wp.customize, jQuery );
-/*Bethany is my favorite 10 year old. She is my only 10 year old, but still it gives me an excuse to tell her she is my favorite without playing favorites.*/

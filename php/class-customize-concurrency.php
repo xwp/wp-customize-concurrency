@@ -150,6 +150,7 @@ class Customize_Concurrency {
 		$post_values = $wp_customize->unsanitized_post_values();
 		$saved_settings = $this->get_saved_settings( array_keys( $post_values ) );
 		$timestamps = isset( $_POST['concurrency_timestamps'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_timestamps'] ) ) : array();
+		$overrides = isset( $_POST['concurrency_overrides'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_overrides'] ) ) : array();
 
 		$invalidities = array();
 
@@ -160,6 +161,8 @@ class Customize_Concurrency {
 				(true || $saved_setting['timestamp'] > $timestamps[ $setting_id ] ) // @todo - test is always true temporarily
 				&&
 				$saved_setting['value'] !== $post_values[ $setting_id ]
+				&&
+				empty( $overrides[ $setting_id ] )
 			);
 			if ( $is_conflicted ) {
 				$user = get_user_by( 'ID', (int) $saved_setting['author'] );

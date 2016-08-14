@@ -49,9 +49,9 @@
 			api.bind( 'error', function( response ) {
 
 				_.each( response.setting_validities, function( validity, settingId ) {
-					if ( true !== validity && validity.concurrency_conflict ) {
-						var control, theirValue;
+					var control, theirValue;
 
+					if ( true !== validity && validity.concurrency_conflict ) {
 						theirValue = validity.concurrency_conflict.data.their_value;
 						control = api.control( settingId );
 

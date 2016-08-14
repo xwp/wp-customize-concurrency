@@ -254,7 +254,7 @@ class Customize_Concurrency {
 	function get_saved_settings( $setting_ids ) {
 		$saved_settings = array();
 
-		add_filter( 'sanitize_title', array( $this, 'sanitize_title_for_query' ), 10, 3 );
+		add_filter( 'sanitize_title', array( $this, 'sanitize_title_for_query' ), 1000, 3 );
 		$saved_setting_posts = new \WP_Query(array(
 			'post_name__in' => $setting_ids,
 			'post_type' => self::POST_TYPE,
@@ -264,7 +264,7 @@ class Customize_Concurrency {
 			'posts_per_page' => -1,
 			'ignore_sticky_posts' => true,
 		));
-		remove_filter( 'sanitize_title', array( $this, 'sanitize_title_for_query' ) );
+		remove_filter( 'sanitize_title', array( $this, 'sanitize_title_for_query' ), 1000 );
 
 		foreach ( $saved_setting_posts->posts as $setting_post ) {
 
@@ -309,15 +309,12 @@ class Customize_Concurrency {
 	 * @see get_saved_settings()
 	 * @filter sanitize_title
 	 *
-	 * @param $title     string Sanitized title without the needed brackets
-	 * @param $raw_title string Original title to revert to if the only difference is square brackets
+	 * @param $title     string Sanitized title without our much needed brackets
+	 * @param $raw_title string Original title to revert to
 	 * @param $context   string
 	 * @return string
 	 */
 	function sanitize_title_for_query( $title, $raw_title, $context ) {
-		if ( 'query' === $context && preg_replace( '/[\[\]]/', '', $raw_title ) === $title ) {
-			return $raw_title;
-		}
-		return $title;
+		return esc_sql( $raw_title );
 	}
 }

@@ -1,7 +1,7 @@
-/* global wp, _, _customizeConcurrency, JSON, jQuery */
+/* global wp, _, _customizeConcurrency, JSON */
 /* eslint-disable no-extra-parens */
 
-( function( api, $ ) {
+( function( api ) {
 	'use strict';
 
 	var component;
@@ -50,7 +50,7 @@
 
 				_.each( response.setting_validities, function( validity, settingId ) {
 					if ( true !== validity && validity.concurrency_conflict ) {
-						var control, notification, theirValue, code;
+						var control, theirValue;
 
 						theirValue = validity.concurrency_conflict.data.their_value;
 						control = api.control( settingId );
@@ -60,10 +60,10 @@
 							control.renderNotifications();
 
 							control.deferred.embedded.done( function() {
-								control.container.on( 'click', '.concurrency-conflict-override', function( e ) {
+								control.container.on( 'click', '.concurrency-conflict-override', function() {
 									control.setting.concurrency_override = true;
 								} );
-								control.container.on( 'click', '.concurrency-conflict-accept', function( e ) {
+								control.container.on( 'click', '.concurrency-conflict-accept', function() {
 									control.setting.set( theirValue );
 								} );
 							} );
@@ -105,4 +105,4 @@
 
 	component.init();
 
-} )( wp.customize, jQuery );
+} )( wp.customize );

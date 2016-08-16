@@ -174,8 +174,8 @@ class Customize_Concurrency {
 			if ( $is_conflicted ) {
 				$user = get_user_by( 'ID', (int) $saved_setting['author'] );
 				$message = sprintf(
-					__( 'Conflict due to concurrent update by %s. Their value: %s', 'customize-posts' ),
-					$user ? $user->display_name : __( '(unknown user)', 'customize-posts' ),
+					__( 'Conflict due to concurrent update by %1$s. Their value: %2$s', 'customize-concurrency' ),
+					$user ? $user->display_name : __( '(unknown user)', 'customize-concurrency' ),
 					$saved_setting['value']
 				);
 				$validity->add( 'concurrency_conflict', $message, array( 'their_value' => $saved_setting['value'] ) );
@@ -191,7 +191,7 @@ class Customize_Concurrency {
 	/**
 	 * Store update history with timestamps.
 	 *
-	 * todo: use snapshots when applicable.
+	 * @todo: Use snapshots when applicable.
 	 */
 	public function customize_save_after() {
 
@@ -236,9 +236,16 @@ class Customize_Concurrency {
 		}
 
 		$this->restore_kses();
-		// Todo: check $r for errors
+		// @todo: check $r for errors.
 	}
 
+	/**
+	 * Add concurrency_session_timestamp to customize_save_response.
+	 *
+	 * @param array $response Response.
+	 *
+	 * @return array
+	 */
 	public function customize_save_response( $response ) {
 		$response['concurrency_session_timestamp'] = strtotime( current_time( 'mysql', true ) );
 		return $response;
@@ -249,7 +256,8 @@ class Customize_Concurrency {
 	 *
 	 * Todo: read from snapshots when applicable.
 	 *
-	 * @return array
+	 * @param array $setting_ids Setting IDs.
+	 * @return array Saved settings.
 	 */
 	function get_saved_settings( $setting_ids ) {
 		$saved_settings = array();
@@ -304,17 +312,18 @@ class Customize_Concurrency {
 	}
 
 	/**
-	 * Keep square brackets from being removed when the title is sanitized for the query in $this->get_saved_settings()
+	 * Keep square brackets from being removed when the title is sanitized for the query in $this->get_saved_settings().
 	 *
 	 * @see get_saved_settings()
 	 * @filter sanitize_title
 	 *
-	 * @param $title     string Sanitized title without our much needed brackets
-	 * @param $raw_title string Original title to revert to
-	 * @param $context   string
-	 * @return string
+	 * @param string $title     Sanitized title without our much needed brackets.
+	 * @param string $raw_title Original title to revert to.
+	 * @param string $context   Context.
+	 * @return string Raw title.
 	 */
 	function sanitize_title_for_query( $title, $raw_title, $context ) {
+		unset( $title, $context );
 		return esc_sql( $raw_title );
 	}
 }

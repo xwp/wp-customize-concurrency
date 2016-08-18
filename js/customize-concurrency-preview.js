@@ -21,7 +21,7 @@
 	 */
 	component.init = function() {
 		api.bind( 'preview-ready', function() {
-			api.preview.bind('customize-concurrency-data', function( data ){
+			api.preview.bind( 'customize-concurrency-data', function( data ) {
 				component.data.timestamps = data.concurrency_timestamps;
 				component.data.overrides = data.concurrency_overrides;
 			});

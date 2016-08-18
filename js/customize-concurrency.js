@@ -46,7 +46,7 @@
 				component.data.session_start_timestamp = data.concurrency_session_timestamp;
 			} );
 
-			api.bind( 'change', function (setting) {
+			api.bind( 'change', function () {
 				api.previewer.send( 'customize-concurrency-data', component.getTimestampsAndOverrides() );
 			});
 

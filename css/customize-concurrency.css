@@ -1,11 +1,15 @@
-.button.concurrency-conflict {
+.notice-concurrency_conflict .button {
 	float: right;
 }
 
-.button.concurrency-conflict .dashicons-thumbs-down {
+.notice-concurrency_conflict .button .dashicons-thumbs-down {
 	line-height: 28px;
 }
 
-.button.concurrency-conflict .dashicons-thumbs-up {
+.notice-concurrency_conflict .button .dashicons-thumbs-up {
 	line-height: 24px;
+}
+
+.notice-concurrency_conflict i {
+	color: #999999;
 }

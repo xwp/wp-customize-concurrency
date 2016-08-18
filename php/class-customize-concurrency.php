@@ -123,12 +123,13 @@ class Customize_Concurrency {
 		<script type="text/html" id="tmpl-customize-concurrency-notifications">
 			<ul>
 				<# _.each( data.notifications, function( notification ) { #>
-					<li class="notice notice-{{ notification.type || 'info' }} {{ data.altNotice ? 'notice-alt' : '' }}" data-code="{{ notification.code }}" data-type="{{ notification.type }}">
+					<li class="notice notice-{{ notification.type || 'info' }} {{ data.altNotice ? 'notice-alt' : '' }} notice-concurrency_conflict" data-code="{{ notification.code }}" data-type="{{ notification.type }}">
 						<# if ( /concurrency_conflict/.test( notification.code ) ) { #>
-							<button class="button concurrency-conflict concurrency-conflict-accept" type="button"><span class="dashicons dashicons-thumbs-up"></span></button>
-							<button class="button concurrency-conflict concurrency-conflict-override" type="button"><span class="dashicons dashicons-thumbs-down"></span></button>
+							<button class="button concurrency-conflict-override" type="button"><span class="dashicons dashicons-thumbs-down"></span></button>
+							<button class="button concurrency-conflict-accept" type="button"><span class="dashicons dashicons-thumbs-up"></span></button>
+							Conflict due to concurrent update by {{ notification.data.user }}.
+							<p><b>Change:</b> <i>"{{ notification.data.their_value }}"</i></p>
 						<# } #>
-						{{ notification.message || notification.code }}
 					</li>
 				<# } ); #>
 			</ul>
@@ -183,12 +184,8 @@ class Customize_Concurrency {
 			);
 			if ( $is_conflicted ) {
 				$user = get_user_by( 'ID', (int) $saved_setting['author'] );
-				$message = sprintf(
-					__( 'Conflict due to concurrent update by %1$s. Their value: %2$s', 'customize-concurrency' ),
-					$user ? $user->display_name : __( '(unknown user)', 'customize-concurrency' ),
-					$saved_setting['value']
-				);
-				$validity->add( 'concurrency_conflict', $message, array( 'their_value' => $saved_setting['value'] ) );
+				$message = __( 'Conflict due to concurrent update.', 'customize-concurrency' );
+				$validity->add( 'concurrency_conflict', $message, array( 'their_value' => $saved_setting['value'], 'user' => $user->display_name ) );
 			}
 			return $validity;
 		};

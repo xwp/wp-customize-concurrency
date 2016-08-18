@@ -53,6 +53,14 @@ class Plugin extends Plugin_Base {
 		$deps = array( 'underscore' );
 		$wp_scripts->add( $this->slug, $src, $deps );
 		$wp_scripts->add_data( $this->slug, 'group', 1 ); // 1 = in_footer.
+
+		$src = $this->dir_url . 'js/customize-concurrency-preview.js';
+		$deps = array( 'underscore', 'customize-preview', 'customize-selective-refresh' );
+		$wp_scripts->add( "{$this->slug}-preview", $src, $deps );
+		$wp_scripts->add_data( "{$this->slug}-preview", 'group', 1 ); // 1 = in_footer.
+
+		// maybe-> 'customize-preview-posts', 'customize-preview-setting-validities'
+
 	}
 
 	/**

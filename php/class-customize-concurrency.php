@@ -67,6 +67,7 @@ class Customize_Concurrency {
 
 		add_action( 'init', array( $this, 'register_post_type' ) );
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
+		add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
 		add_action( 'customize_save_validation_before', array( $this, 'customize_save_validation_before' ) );
@@ -97,6 +98,15 @@ class Customize_Concurrency {
 	public function customize_controls_enqueue_scripts() {
 		wp_enqueue_script( $this->plugin->slug );
 		wp_enqueue_style( $this->plugin->slug );
+	}
+
+	/**
+	 * Add script specifically for the preview pane.
+	 *
+	 * @action customize_preview_init
+	 */
+	function customize_preview_init() {
+		wp_enqueue_script( "{$this->plugin->slug}-preview" );
 	}
 
 	/**

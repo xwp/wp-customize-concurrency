@@ -46,6 +46,10 @@
 				component.data.session_start_timestamp = data.concurrency_session_timestamp;
 			} );
 
+			api.bind( 'change', function (setting) {
+				api.previewer.send( 'customize-concurrency-data', component.getTimestampsAndOverrides() );
+			});
+
 			api.bind( 'error', function( response ) {
 
 				_.each( response.setting_validities, function( validity, settingId ) {
@@ -62,9 +66,11 @@
 							control.deferred.embedded.done( function() {
 								control.container.on( 'click', '.concurrency-conflict-override', function() {
 									control.setting.concurrency_override = true;
+									control.setting.notifications.remove( control.setting.id + ':concurrency_conflict' );
 								} );
 								control.container.on( 'click', '.concurrency-conflict-accept', function() {
 									control.setting.set( theirValue );
+									control.setting.notifications.remove( control.setting.id + ':concurrency_conflict' );
 								} );
 							} );
 						}
@@ -86,20 +92,27 @@
 		var originalQuery = api.previewer.query;
 
 		api.previewer.query = function() {
-			var retval = originalQuery.apply( this, arguments ), timestamps = {}, overrides = {};
-
-			api.each( function( setting ) {
-				if ( setting._dirty ) {
-					timestamps[ setting.id ] = setting.concurrency_timestamp;
-					if ( setting.concurrency_override ) {
-						overrides[ setting.id ] = true;
-					}
-				}
-			} );
-			retval.concurrency_timestamps = JSON.stringify( timestamps );
-			retval.concurrency_overrides = JSON.stringify( overrides );
-
+			var retval = originalQuery.apply( this, arguments );
+			_.extend( retval, component.getTimestampsAndOverrides() );
 			return retval;
+		};
+	};
+
+	component.getTimestampsAndOverrides = function() {
+		var timestamps = {}, overrides = {};
+
+		api.each( function( setting ) {
+			if ( setting._dirty ) {
+				timestamps[ setting.id ] = setting.concurrency_timestamp;
+				if ( setting.concurrency_override ) {
+					overrides[ setting.id ] = true;
+				}
+			}
+		} );
+
+		return {
+			concurrency_timestamps: JSON.stringify( timestamps ),
+			concurrency_overrides: JSON.stringify( overrides )
 		};
 	};
 

@@ -70,7 +70,7 @@ class Customize_Concurrency {
 		add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
-		add_action( 'customize_save_validation_before', array( $this, 'customize_save_validation_before' ) );
+		add_action( 'customize_register', array( $this, 'customize_register' ) );
 		add_action( 'customize_save_after', array( $this, 'customize_save_after' ) );
 		add_action( 'customize_save_response', array( $this, 'customize_save_response' ) );
 	}
@@ -160,7 +160,7 @@ class Customize_Concurrency {
 	 *
 	 * @param \WP_Customize_Manager $wp_customize Customize Manager used to get values to be checked.
 	 */
-	public function customize_save_validation_before( \WP_Customize_Manager $wp_customize ) {
+	public function customize_register( \WP_Customize_Manager $wp_customize ) {
 		$post_values = $wp_customize->unsanitized_post_values();
 		$saved_settings = $this->get_saved_settings( array_keys( $post_values ) );
 

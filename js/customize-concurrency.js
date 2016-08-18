@@ -66,11 +66,11 @@
 							control.deferred.embedded.done( function() {
 								control.container.on( 'click', '.concurrency-conflict-override', function() {
 									control.setting.concurrency_override = true;
-									control.setting.notifications.remove( control.setting.id + ':concurrency_conflict' );
+									control.notifications.remove( control.setting.id + ':concurrency_conflict' );
 								} );
 								control.container.on( 'click', '.concurrency-conflict-accept', function() {
 									control.setting.set( theirValue );
-									control.setting.notifications.remove( control.setting.id + ':concurrency_conflict' );
+									control.notifications.remove( control.setting.id + ':concurrency_conflict' );
 								} );
 							} );
 						}

@@ -70,7 +70,7 @@ class Customize_Concurrency {
 		add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
-		add_action( 'customize_register', array( $this, 'customize_register' ) );
+		add_action( 'customize_register', array( $this, 'customize_register' ), 30 );
 		add_action( 'customize_save_after', array( $this, 'customize_save_after' ) );
 		add_action( 'customize_save_response', array( $this, 'customize_save_response' ) );
 	}

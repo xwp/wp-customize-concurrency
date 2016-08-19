@@ -125,8 +125,8 @@ class Customize_Concurrency {
 				<# _.each( data.notifications, function( notification ) { #>
 					<li class="notice notice-{{ notification.type || 'info' }} {{ data.altNotice ? 'notice-alt' : '' }} notice-concurrency_conflict" data-code="{{ notification.code }}" data-type="{{ notification.type }}">
 						<# if ( /concurrency_conflict/.test( notification.code ) ) { #>
-							<button class="button concurrency-conflict-override" type="button"><span class="dashicons dashicons-thumbs-down"></span></button>
-							<button class="button concurrency-conflict-accept" type="button"><span class="dashicons dashicons-thumbs-up"></span></button>
+							<button class="button concurrency-conflict-override" type="button" data-tooltip="Reject Change"><span class="dashicons dashicons-thumbs-down"></span></button>
+							<button class="button concurrency-conflict-accept" type="button" data-tooltip="Accept Change"><span class="dashicons dashicons-thumbs-up"></span></button>
 							Conflict due to concurrent update by {{ notification.data.user }}.
 							<p><b>Change:</b> <i>"{{ notification.data.their_value }}"</i></p>
 						<# } #>

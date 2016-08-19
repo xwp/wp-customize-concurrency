@@ -46,7 +46,9 @@
 				component.data.session_start_timestamp = data.concurrency_session_timestamp;
 			} );
 
-			api.bind( 'change', function() {
+			api.bind( 'change', function( setting ) {
+				var control = api.control( setting.id );
+				control.notificationsTemplate = wp.template( 'customize-concurrency-notifications' );
 				api.previewer.send( 'customize-concurrency-data', component.getTimestampsAndOverrides() );
 			});
 

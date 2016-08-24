@@ -207,7 +207,6 @@ class Customize_Concurrency {
 			return $validity;
 		};
 
-		// @todo fix $wp_customize->settings() is giving a 500/502 when called inside customize_snapshot_save_before
 		foreach ( $wp_customize->settings() as $setting ) {
 			add_filter( "customize_validate_{$setting->id}", $validate_concurrency_conflict, 1000, 3 );
 		}
@@ -272,7 +271,7 @@ class Customize_Concurrency {
 		$setting_ids = isset( $_POST['concurrency_timestamps'] ) ? array_keys( (array) json_decode( wp_unslash( $_POST['concurrency_timestamps'] ) ) ) : array();
 
 		foreach ( $setting_ids as $setting_id ) {
-			$data[ $setting_id ]['timestamp'] = current_time( 'mysql', 1 );
+			$data[ $setting_id ]['timestamp'] = strtotime( current_time( 'mysql', 1 ) );
 			$data[ $setting_id ]['author'] = get_current_user_id();
 		}
 

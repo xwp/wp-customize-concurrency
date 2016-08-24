@@ -70,7 +70,8 @@ class Customize_Concurrency {
 		add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
-		add_action( 'customize_register', array( $this, 'customize_register' ), 30 );
+		add_action( 'customize_snapshot_save_before', array( $this, 'customize_snapshot_save_before' ), 10, 2 );
+//		add_action( 'customize_register', array( $this, 'customize_register' ), 30 );
 		add_action( 'customize_save_after', array( $this, 'customize_save_after' ) );
 		add_action( 'customize_snapshot_save', array( $this, 'customize_snapshot_save' ), 10, 2 );
 		add_action( 'customize_save_response', array( $this, 'customize_save_response' ) );
@@ -157,29 +158,42 @@ class Customize_Concurrency {
 	}
 
 	/**
-	 * Check all incoming values to see if any were changed between the last time we checked and when we published these
-	 * new values.
+	 * Set up conflict checking within snapshots.
+	 */
+	public function customize_snapshot_save_before( $snapshot, \WP_Customize_Manager $wp_customize ) {
+		$saved_settings = $snapshot->data();
+		$this->sanitize_conflicts( $saved_settings, $wp_customize );
+	}
+
+	/**
+	 * Set up conflict checking without snapshots.
 	 *
-	 * NOTE TO SELF: This always runs, but probably should not when saving/updating snapshots, but probably should on publishing snapshot.
-	 *
-	 * @param \WP_Customize_Manager $wp_customize Customize Manager used to get values to be checked.
+	 * @todo detect snapshot save and do not validate against live changes
 	 */
 	public function customize_register( \WP_Customize_Manager $wp_customize ) {
 		$post_values = $wp_customize->unsanitized_post_values();
 		$saved_settings = $this->get_saved_settings( array_keys( $post_values ) );
+		$this->sanitize_conflicts( $saved_settings, $wp_customize );
+	}
 
+
+	/**
+	 * Check all incoming values to see if any were changed between the last time we checked and when we published these
+	 * new values.
+	 */
+	public function sanitize_conflicts ($saved_settings, \WP_Customize_Manager $wp_customize ) {
 		// @todo When publishing a snapshot outside the Customizer (e.g. from admin or WP Cron), the setting $timestamps should get supplied from modified times for setting updates in the snapshot?
 		$timestamps = isset( $_POST['concurrency_timestamps'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_timestamps'] ) ) : array();
 		$overrides = isset( $_POST['concurrency_overrides'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_overrides'] ) ) : array();
 
 		$validate_concurrency_conflict = function( \WP_Error $validity, $value, \WP_Customize_Setting $setting ) use ( $timestamps, $saved_settings, $overrides ) {
-			$saved_setting = $saved_settings[ $setting->id ];
+			$saved_setting = isset( $saved_settings[ $setting->id ] ) ? $saved_settings[ $setting->id ] : null;
 			$is_conflicted = (
 				array_key_exists( $setting->id, $saved_settings )
 				&&
 				isset( $saved_setting['timestamp'], $saved_setting['value'] )
 				&&
-				( $saved_setting['timestamp'] > $timestamps[ $setting->id ] ) // @todo - test is always true temporarily
+				( $saved_setting['timestamp'] > $timestamps[ $setting->id ] )
 				&&
 				$saved_setting['value'] !== $value
 				&&
@@ -193,6 +207,7 @@ class Customize_Concurrency {
 			return $validity;
 		};
 
+		// @todo fix $wp_customize->settings() is giving a 500/502 when called inside customize_snapshot_save_before
 		foreach ( $wp_customize->settings() as $setting ) {
 			add_filter( "customize_validate_{$setting->id}", $validate_concurrency_conflict, 1000, 3 );
 		}
@@ -253,10 +268,6 @@ class Customize_Concurrency {
 	 * Runs when a snapshot is saved/updated
 	 */
 	public function customize_snapshot_save( $data, $snapshot ) {
-
-		// @todo Next Step: check for conflicts before saving and set notifications
-
-
 		// Since we only send timestamps for dirty values, this will give us the list of which settings have new values.
 		$setting_ids = isset( $_POST['concurrency_timestamps'] ) ? array_keys( (array) json_decode( wp_unslash( $_POST['concurrency_timestamps'] ) ) ) : array();
 

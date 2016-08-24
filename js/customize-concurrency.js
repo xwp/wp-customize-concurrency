@@ -69,10 +69,12 @@
 								control.container.on( 'click', '.concurrency-conflict-override', function() {
 									control.setting.concurrency_override = true;
 									control.notifications.remove( control.setting.id + ':concurrency_conflict' );
+									alert( control.setting.id + ':concurrency_conflict' );
 								} );
 								control.container.on( 'click', '.concurrency-conflict-accept', function() {
 									control.setting.set( theirValue );
 									control.notifications.remove( control.setting.id + ':concurrency_conflict' );
+									alert( control.setting.id + ':concurrency_conflict' );
 								} );
 							} );
 						}

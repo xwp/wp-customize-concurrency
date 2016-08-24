@@ -48,7 +48,10 @@
 
 			api.bind( 'change', function( setting ) {
 				var control = api.control( setting.id );
-				control.notificationsTemplate = wp.template( 'customize-concurrency-notifications' );
+				if ( control && control.notifications ) {
+					control.notificationsTemplate = wp.template( 'customize-concurrency-notifications' );
+					control.renderNotifications();
+				}
 				api.previewer.send( 'customize-concurrency-data', component.getTimestampsAndOverrides() );
 			});
 
@@ -66,15 +69,16 @@
 							control.renderNotifications();
 
 							control.deferred.embedded.done( function() {
+								console.log('done');
 								control.container.on( 'click', '.concurrency-conflict-override', function() {
+									alert( control.setting.id + ':concurrency_conflict' );
 									control.setting.concurrency_override = true;
 									control.notifications.remove( control.setting.id + ':concurrency_conflict' );
-									alert( control.setting.id + ':concurrency_conflict' );
 								} );
 								control.container.on( 'click', '.concurrency-conflict-accept', function() {
+									alert( control.setting.id + ':concurrency_conflict' );
 									control.setting.set( theirValue );
 									control.notifications.remove( control.setting.id + ':concurrency_conflict' );
-									alert( control.setting.id + ':concurrency_conflict' );
 								} );
 							} );
 						}

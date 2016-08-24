@@ -47,41 +47,18 @@
 			} );
 
 			api.bind( 'change', function( setting ) {
-				var control = api.control( setting.id );
-				if ( control && control.notifications ) {
-					control.notificationsTemplate = wp.template( 'customize-concurrency-notifications' );
-					control.renderNotifications();
-				}
+				component.setNotificationTemplate( setting.id );
 				api.previewer.send( 'customize-concurrency-data', component.getTimestampsAndOverrides() );
 			});
 
 			api.bind( 'error', function( response ) {
 
 				_.each( response.setting_validities, function( validity, settingId ) {
-					var control, theirValue;
+					var control = api.control( settingId );
 
 					if ( true !== validity && validity.concurrency_conflict ) {
-						theirValue = validity.concurrency_conflict.data.their_value;
-						control = api.control( settingId );
-
-						if ( control && control.notifications ) {
-							control.notificationsTemplate = wp.template( 'customize-concurrency-notifications' );
-							control.renderNotifications();
-
-							control.deferred.embedded.done( function() {
-								console.log('done');
-								control.container.on( 'click', '.concurrency-conflict-override', function() {
-									alert( control.setting.id + ':concurrency_conflict' );
-									control.setting.concurrency_override = true;
-									control.notifications.remove( control.setting.id + ':concurrency_conflict' );
-								} );
-								control.container.on( 'click', '.concurrency-conflict-accept', function() {
-									alert( control.setting.id + ':concurrency_conflict' );
-									control.setting.set( theirValue );
-									control.notifications.remove( control.setting.id + ':concurrency_conflict' );
-								} );
-							} );
-						}
+						control.setting.concurrency_their_value = validity.concurrency_conflict.data.their_value;
+						component.setNotificationTemplate( settingId );
 					}
 				} );
 			} );
@@ -122,6 +99,29 @@
 			concurrency_timestamps: JSON.stringify( timestamps ),
 			concurrency_overrides: JSON.stringify( overrides )
 		};
+	};
+
+	component.setNotificationTemplate = function( settingId ) {
+		var control = api.control( settingId );
+
+		if ( control && control.notifications ) {
+			control.notificationsTemplate = wp.template( 'customize-concurrency-notifications' );
+			control.renderNotifications();
+
+			control.deferred.embedded.done( function() {
+				control.container.on( 'click', '.concurrency-conflict-override', function() {
+					control.setting.concurrency_override = true;
+					control.notifications.remove( control.setting.id + ':concurrency_conflict' );
+				} );
+				control.container.on( 'click', '.concurrency-conflict-accept', function() {
+					var setting = control.setting;
+					if ( setting.concurrency_their_value ) {
+						setting.set( setting.concurrency_their_value );
+					}
+					control.notifications.remove( setting.id + ':concurrency_conflict' );
+				} );
+			} );
+		}
 	};
 
 	component.init();

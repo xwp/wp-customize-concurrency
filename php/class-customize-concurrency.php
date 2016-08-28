@@ -8,6 +8,7 @@
  */
 
 namespace CustomizeConcurrency;
+use CustomizeSnapshots\Customize_Snapshot_Manager;
 
 /**
  * Customize Concurrency class.
@@ -65,15 +66,22 @@ class Customize_Concurrency {
 			$this->customize_manager = $GLOBALS['wp_customize'];
 		}
 
+		/*
+		 * The customize_register action fires both when publishing and when saving a snapshot. The snapshot requires
+		 * different data and is handled by `customize_snapshot_save_before`.
+		 */
+		if ( ! isset( $_REQUEST['customize_snapshot_uuid'] ) ) { // WPCS: input var ok.
+			add_action( 'customize_register', array( $this, 'customize_register' ), 30 );
+			add_action( 'customize_save_after', array( $this, 'customize_save_after' ) );
+		}
+
 		add_action( 'init', array( $this, 'register_post_type' ) );
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
 		add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
 		add_action( 'customize_snapshot_save_before', array( $this, 'customize_snapshot_save_before' ), 10, 2 );
-//		add_action( 'customize_register', array( $this, 'customize_register' ), 30 );
-		add_action( 'customize_save_after', array( $this, 'customize_save_after' ) );
-		add_action( 'customize_snapshot_save', array( $this, 'customize_snapshot_save' ), 10, 2 );
+		add_action( 'customize_snapshot_save', array( $this, 'customize_snapshot_save' ) );
 		add_action( 'customize_save_response', array( $this, 'customize_save_response' ) );
 	}
 
@@ -160,15 +168,13 @@ class Customize_Concurrency {
 	/**
 	 * Set up conflict checking within snapshots.
 	 */
-	public function customize_snapshot_save_before( $snapshot, \WP_Customize_Manager $wp_customize ) {
+	public function customize_snapshot_save_before( $snapshot, Customize_Snapshot_Manager $snapshot_manager ) {
 		$saved_settings = $snapshot->data();
-		$this->sanitize_conflicts( $saved_settings, $wp_customize );
+		$this->sanitize_conflicts( $saved_settings, $snapshot_manager->customize_manager );
 	}
 
 	/**
 	 * Set up conflict checking without snapshots.
-	 *
-	 * @todo detect snapshot save and do not validate against live changes
 	 */
 	public function customize_register( \WP_Customize_Manager $wp_customize ) {
 		$post_values = $wp_customize->unsanitized_post_values();
@@ -266,7 +272,7 @@ class Customize_Concurrency {
 	/**
 	 * Runs when a snapshot is saved/updated
 	 */
-	public function customize_snapshot_save( $data, $snapshot ) {
+	public function customize_snapshot_save( $data ) {
 		// Since we only send timestamps for dirty values, this will give us the list of which settings have new values.
 		$setting_ids = isset( $_POST['concurrency_timestamps'] ) ? array_keys( (array) json_decode( wp_unslash( $_POST['concurrency_timestamps'] ) ) ) : array();
 
@@ -292,8 +298,6 @@ class Customize_Concurrency {
 
 	/**
 	 * Get saved settings from default post storage or from snapshot storage.
-	 *
-	 * Todo: read from snapshots when applicable.
 	 *
 	 * @param array $setting_ids Setting IDs.
 	 * @return array Saved settings.

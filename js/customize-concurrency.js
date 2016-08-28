@@ -32,18 +32,11 @@
 			} );
 
 			api.bind( 'saved', function( data ) {
-				if ( ! data.concurrency_session_timestamp || ! data.setting_validities ) {
-					return;
-				}
-				_.each( data.setting_validities, function( validity, settingId ) {
-					var setting = api( settingId );
-					if ( setting && true === validity ) {
-						setting.concurrency_timestamp = data.concurrency_session_timestamp;
-						setting.concurrency_override = false;
-					}
-				} );
+				component.afterSave( data );
+			} );
 
-				component.data.session_start_timestamp = data.concurrency_session_timestamp;
+			api.bind( 'customize-snapshots-update', function( data ) {
+				component.afterSave( data.response );
 			} );
 
 			api.bind( 'change', function( setting ) {
@@ -52,12 +45,8 @@
 			});
 
 			api.bind( 'error', function( response ) {
-
 				_.each( response.setting_validities, function( validity, settingId ) {
-					var control = api.control( settingId );
-
 					if ( true !== validity && validity.concurrency_conflict ) {
-						control.setting.concurrency_their_value = validity.concurrency_conflict.data.their_value;
 						component.setNotificationTemplate( settingId );
 					}
 				} );
@@ -115,13 +104,30 @@
 				} );
 				control.container.on( 'click', '.concurrency-conflict-accept', function() {
 					var setting = control.setting;
-					if ( setting.concurrency_their_value ) {
-						setting.set( setting.concurrency_their_value );
-					}
+					setting.notifications.each( function( notification ) {
+						if ( 'concurrency_conflict' === notification.code ) {
+							setting.set( notification.data.their_value );
+						}
+					} );
 					control.notifications.remove( setting.id + ':concurrency_conflict' );
 				} );
 			} );
 		}
+	};
+
+	component.afterSave = function( data ) {
+		if ( ! data.concurrency_session_timestamp || ! data.setting_validities ) {
+			return;
+		}
+		_.each( data.setting_validities, function( validity, settingId ) {
+			var setting = api( settingId );
+
+			if ( setting && true === validity ) {
+				setting.concurrency_timestamp = data.concurrency_session_timestamp;
+				setting.concurrency_override = false;
+			}
+		} );
+		component.data.session_start_timestamp = data.concurrency_session_timestamp;
 	};
 
 	component.init();

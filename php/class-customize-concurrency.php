@@ -167,14 +167,19 @@ class Customize_Concurrency {
 
 	/**
 	 * Set up conflict checking within snapshots.
+	 *
+	 * @param Customize_Snapshot         $snapshot
+	 * @param Customize_Snapshot_Manager $snapshot_manager
 	 */
-	public function customize_snapshot_save_before( $snapshot, Customize_Snapshot_Manager $snapshot_manager ) {
+	public function customize_snapshot_save_before( Customize_Snapshot $snapshot, Customize_Snapshot_Manager $snapshot_manager ) {
 		$saved_settings = $snapshot->data();
 		$this->sanitize_conflicts( $saved_settings, $snapshot_manager->customize_manager );
 	}
 
 	/**
 	 * Set up conflict checking without snapshots.
+	 *
+	 * @param \WP_Customize_Manager $wp_customize
 	 */
 	public function customize_register( \WP_Customize_Manager $wp_customize ) {
 		$post_values = $wp_customize->unsanitized_post_values();
@@ -186,8 +191,11 @@ class Customize_Concurrency {
 	/**
 	 * Check all incoming values to see if any were changed between the last time we checked and when we published these
 	 * new values.
+	 *
+	 * @param array                 $saved_settings Array of settings to be checked for conflicts.
+	 * @param \WP_Customize_Manager $wp_customize   Customize object.
 	 */
-	public function sanitize_conflicts ($saved_settings, \WP_Customize_Manager $wp_customize ) {
+	public function sanitize_conflicts( $saved_settings, \WP_Customize_Manager $wp_customize ) {
 		// @todo When publishing a snapshot outside the Customizer (e.g. from admin or WP Cron), the setting $timestamps should get supplied from modified times for setting updates in the snapshot?
 		$timestamps = isset( $_POST['concurrency_timestamps'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_timestamps'] ) ) : array();
 		$overrides = isset( $_POST['concurrency_overrides'] ) ? (array) json_decode( wp_unslash( $_POST['concurrency_overrides'] ) ) : array();
@@ -270,7 +278,11 @@ class Customize_Concurrency {
 	}
 
 	/**
-	 * Runs when a snapshot is saved/updated
+	 * Add timestamp and author information.
+	 * Runs when a snapshot is saved/updated.
+	 *
+	 * @param array $data Array of values to be sent to the browser.
+	 * @return array
 	 */
 	public function customize_snapshot_save( $data ) {
 		// Since we only send timestamps for dirty values, this will give us the list of which settings have new values.
@@ -370,3 +382,4 @@ class Customize_Concurrency {
 		return esc_sql( $raw_title );
 	}
 }
+

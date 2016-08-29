@@ -232,6 +232,8 @@ class Customize_Concurrency {
 	 * Runs when content is "Published" not when saved to snapshot.
 	 */
 	public function customize_save_after() {
+		$that = $this;
+		$rs = array();
 
 		$post_values = $this->customize_manager->unsanitized_post_values();
 		$setting_ids = array_keys( $post_values );
@@ -244,7 +246,6 @@ class Customize_Concurrency {
 		$saved_settings = $this->get_saved_settings( $setting_ids );
 
 		$this->suspend_kses();
-		$r = array();
 
 		foreach ( $setting_ids as $setting_id ) {
 			$setting = $this->customize_manager->get_setting( $setting_id );
@@ -267,14 +268,23 @@ class Customize_Concurrency {
 
 			if ( $is_update ) {
 				$post_data['ID'] = $saved_settings[ $setting_id ]['post_id'];
-				$r[] = wp_update_post( wp_slash( $post_data ), true );
+				$rs[] = wp_update_post( wp_slash( $post_data ), true );
 			} else {
-				$r[] = wp_insert_post( wp_slash( $post_data ), true );
+				$rs[] = wp_insert_post( wp_slash( $post_data ), true );
 			}
 		}
 
 		$this->restore_kses();
-		// @todo: check $r for errors.
+
+		foreach ( $rs as $r ) {
+			if ( is_wp_error( $r ) ) {
+				add_filter( 'customize_save_response', function ( $response ) use ( $r, $that ) {
+					$response['snapshot_errors'] = $that->prepare_errors_for_response( $r );
+					return $response;
+				} );
+				return false;
+			}
+		}
 	}
 
 	/**
@@ -381,4 +391,22 @@ class Customize_Concurrency {
 		unset( $title, $context );
 		return esc_sql( $raw_title );
 	}
+
+	/**
+	 * Prepare a WP_Error for sending to JS.
+	 *
+	 * @param \WP_Error $error Error.
+	 * @return array
+	 */
+	public function prepare_errors_for_response( \WP_Error $error ) {
+		$exported_errors = array();
+		foreach ( $error->errors as $code => $messages ) {
+			$exported_errors[ $code ] = array(
+				'message' => join( ' ', $messages ),
+				'data' => $error->get_error_data( $code ),
+			);
+		}
+		return $exported_errors;
+	}
+
 }

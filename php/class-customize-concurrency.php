@@ -168,8 +168,8 @@ class Customize_Concurrency {
 	/**
 	 * Set up conflict checking within snapshots.
 	 *
-	 * @param Customize_Snapshot         $snapshot
-	 * @param Customize_Snapshot_Manager $snapshot_manager
+	 * @param Customize_Snapshot         $snapshot         Snapshot object.
+	 * @param Customize_Snapshot_Manager $snapshot_manager Snapshot Manager.
 	 */
 	public function customize_snapshot_save_before( Customize_Snapshot $snapshot, Customize_Snapshot_Manager $snapshot_manager ) {
 		$saved_settings = $snapshot->data();
@@ -179,7 +179,7 @@ class Customize_Concurrency {
 	/**
 	 * Set up conflict checking without snapshots.
 	 *
-	 * @param \WP_Customize_Manager $wp_customize
+	 * @param \WP_Customize_Manager $wp_customize Customizer object.
 	 */
 	public function customize_register( \WP_Customize_Manager $wp_customize ) {
 		$post_values = $wp_customize->unsanitized_post_values();
@@ -382,4 +382,3 @@ class Customize_Concurrency {
 		return esc_sql( $raw_title );
 	}
 }
-

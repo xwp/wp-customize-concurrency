@@ -9,6 +9,7 @@
 
 namespace CustomizeConcurrency;
 use CustomizeSnapshots\Customize_Snapshot_Manager;
+use CustomizeSnapshots\Customize_Snapshot;
 
 /**
  * Customize Concurrency class.
@@ -68,7 +69,8 @@ class Customize_Concurrency {
 
 		/*
 		 * The customize_register action fires both when publishing and when saving a snapshot. The snapshot requires
-		 * different data and is handled by `customize_snapshot_save_before`.
+		 * different data and is handled by `customize_snapshot_save_before`. Action customize_save_after saves to our
+		 * custom post type which is not needed in snapshot mode.
 		 */
 		if ( ! isset( $_REQUEST['customize_snapshot_uuid'] ) ) { // WPCS: input var ok.
 			add_action( 'customize_register', array( $this, 'customize_register' ), 30 );
@@ -301,6 +303,11 @@ class Customize_Concurrency {
 		foreach ( $setting_ids as $setting_id ) {
 			$data[ $setting_id ]['timestamp'] = strtotime( current_time( 'mysql', 1 ) );
 			$data[ $setting_id ]['author'] = get_current_user_id();
+
+			// Store time of first edit to compare a snapshot that is being published to intervening live changes.
+			if ( ! isset( $data[ $setting_id ]['original_timestamp'] ) ) {
+				$data[ $setting_id ]['original_timestamp'] = $data[ $setting_id ]['timestamp'];
+			}
 		}
 
 		return $data;
@@ -319,7 +326,7 @@ class Customize_Concurrency {
 	}
 
 	/**
-	 * Get saved settings from default post storage or from snapshot storage.
+	 * Get saved settings from default post storage. When needed, snapshot data is passed by the filter.
 	 *
 	 * @param array $setting_ids Setting IDs.
 	 * @return array Saved settings.

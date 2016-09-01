@@ -39,7 +39,11 @@ class Plugin extends Plugin_Base {
 	function init() {
 		add_action( 'wp_default_scripts', array( $this, 'register_scripts' ), 11 );
 		add_action( 'wp_default_styles', array( $this, 'register_styles' ), 11 );
-		$this->customize_concurrency = new Customize_Concurrency( $this );
+
+		// Init gets called twice, but we don't need to re-create this object twice.
+		if ( empty( $this->customize_concurrency ) ) {
+			$this->customize_concurrency = new Customize_Concurrency( $this );
+		}
 	}
 
 	/**

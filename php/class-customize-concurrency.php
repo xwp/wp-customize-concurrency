@@ -131,17 +131,13 @@ class Customize_Concurrency {
 
 		printf( '<script>var _customizeConcurrency = %s;</script>', wp_json_encode( $data ) );
 
+		// Template matches snapshots, but needs to be here, too. Snapshots may not be present.
 		?>
 		<script type="text/html" id="tmpl-customize-concurrency-notifications">
 			<ul>
 				<# _.each( data.notifications, function( notification ) { #>
-					<li class="notice notice-{{ notification.type || 'info' }} {{ data.altNotice ? 'notice-alt' : '' }} notice-concurrency_conflict" data-code="{{ notification.code }}" data-type="{{ notification.type }}">
-						<# if ( /concurrency_conflict/.test( notification.code ) ) { #>
-							<button class="button concurrency-conflict-override" type="button" data-tooltip="Reject Change"><span class="dashicons dashicons-thumbs-down"></span></button>
-							<button class="button concurrency-conflict-accept" type="button" data-tooltip="Accept Change"><span class="dashicons dashicons-thumbs-up"></span></button>
-							Conflict due to concurrent update by {{ notification.data.user }}.
-							<p><b>Change:</b> <i>"{{ notification.data.their_value }}"</i></p>
-						<# } #>
+					<li class="notice notice-{{ notification.type || 'info' }} {{ data.altNotice ? 'notice-alt' : '' }}" data-code="{{ notification.code }}" data-type="{{ notification.type }}">
+						{{{ notification.message || notification.code }}}
 					</li>
 				<# } ); #>
 			</ul>
@@ -217,8 +213,16 @@ class Customize_Concurrency {
 			);
 			if ( $is_conflicted ) {
 				$user = get_user_by( 'ID', (int) $saved_setting['author'] );
-				$message = __( 'Conflict due to concurrent update.', 'customize-concurrency' );
-				$validity->add( 'concurrency_conflict', $message, array( 'their_value' => $saved_setting['value'], 'user' => $user->display_name ) );
+				$message = <<<BOTTLE
+					<span class="notice-concurrency_conflict">
+						<button class="button concurrency-conflict-override" type="button" data-tooltip="Reject Change"><span class="dashicons dashicons-thumbs-down"></span></button>
+						<button class="button concurrency-conflict-accept" type="button" data-tooltip="Accept Change"><span class="dashicons dashicons-thumbs-up"></span></button>
+						Conflict due to concurrent update by %s.
+						<p><b>Change:</b> <i>"%s"</i></p>
+					</span>
+BOTTLE;
+				$message = sprintf( $message, $user->display_name, $saved_setting['value'] );
+				$validity->add( 'concurrency_conflict', $message, array( 'their_value' => $saved_setting['value'] ) );
 			}
 			return $validity;
 		};

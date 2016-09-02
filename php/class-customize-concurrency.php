@@ -68,7 +68,7 @@ class Customize_Concurrency {
 		}
 
 		/*
-		 * The customize_register action fires both when publishing and when saving a snapshot. The snapshot requires
+		 * The customize_register action fires both when publishing and when saving a snapshot, but the snapshot requires
 		 * different data and is handled by `customize_snapshot_save_before`. Action customize_save_after saves to our
 		 * custom post type which is not needed in snapshot mode.
 		 */
@@ -80,6 +80,7 @@ class Customize_Concurrency {
 		add_action( 'init', array( $this, 'register_post_type' ) );
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
 		add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
+		add_action( 'customize_preview_init', array( $this, 'customize_preview_sanitize' ) );
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
 		add_action( 'customize_snapshot_save_before', array( $this, 'customize_snapshot_save_before' ), 10, 2 );
@@ -164,7 +165,7 @@ class Customize_Concurrency {
 	}
 
 	/**
-	 * Set up conflict checking within snapshots.
+	 * Set up conflict checking within snapshots on save or update.
 	 *
 	 * @param Customize_Snapshot         $snapshot         Snapshot object.
 	 * @param Customize_Snapshot_Manager $snapshot_manager Snapshot Manager.
@@ -172,6 +173,20 @@ class Customize_Concurrency {
 	public function customize_snapshot_save_before( Customize_Snapshot $snapshot, Customize_Snapshot_Manager $snapshot_manager ) {
 		$saved_settings = $snapshot->data();
 		$this->sanitize_conflicts( $saved_settings, $snapshot_manager->customize_manager );
+	}
+
+	/**
+	 * Set up conflict checking within snapshots on preview.
+	 *
+	 * @todo set up an action hook for this that passes the manager, possiblly from Customize_Snapshot_Manager::customize_preview_init()
+	 *
+	 */
+	function customize_preview_sanitize() {
+		global $customize_snapshots_plugin;
+
+		$snapshot_manager = $customize_snapshots_plugin->customize_snapshot_manager;
+		$snapshot_manager->init();
+		$this->sanitize_conflicts( $snapshot_manager->snapshot->data(), $snapshot_manager->customize_manager );
 	}
 
 	/**

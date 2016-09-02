@@ -179,7 +179,6 @@ class Customize_Concurrency {
 	 * Set up conflict checking within snapshots on preview.
 	 *
 	 * @todo set up an action hook for this that passes the manager, possiblly from Customize_Snapshot_Manager::customize_preview_init()
-	 *
 	 */
 	function customize_preview_sanitize() {
 		global $customize_snapshots_plugin;

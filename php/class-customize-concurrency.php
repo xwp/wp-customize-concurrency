@@ -68,11 +68,15 @@ class Customize_Concurrency {
 		}
 
 		/*
+		 * If we are handling a snapshot, we can set up conflict checking on change with customize_preview_init.
+		 *
 		 * The customize_register action fires both when publishing and when saving a snapshot, but the snapshot requires
 		 * different data and is handled by `customize_snapshot_save_before`. Action customize_save_after saves to our
 		 * custom post type which is not needed in snapshot mode.
 		 */
-		if ( ! isset( $_REQUEST['customize_snapshot_uuid'] ) ) { // WPCS: input var ok.
+		if ( isset( $_REQUEST['customize_snapshot_uuid'] ) ) { // WPCS: input var ok.
+			add_action( 'customize_preview_init', array( $this, 'customize_preview_sanitize' ) );
+		} else {
 			add_action( 'customize_register', array( $this, 'customize_register' ), 30 );
 			add_action( 'customize_save_after', array( $this, 'customize_save_after' ) );
 		}
@@ -80,7 +84,7 @@ class Customize_Concurrency {
 		add_action( 'init', array( $this, 'register_post_type' ) );
 		add_action( 'customize_controls_enqueue_scripts', array( $this, 'customize_controls_enqueue_scripts' ) );
 		add_action( 'customize_preview_init', array( $this, 'customize_preview_init' ) );
-		add_action( 'customize_preview_init', array( $this, 'customize_preview_sanitize' ) );
+
 		add_action( 'customize_controls_print_footer_scripts', array( $this, 'customize_controls_print_footer_scripts' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'preserve_inserted_post_name' ), 10, 2 );
 		add_action( 'customize_snapshot_save_before', array( $this, 'customize_snapshot_save_before' ), 10, 2 );

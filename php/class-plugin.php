@@ -39,7 +39,11 @@ class Plugin extends Plugin_Base {
 	function init() {
 		add_action( 'wp_default_scripts', array( $this, 'register_scripts' ), 11 );
 		add_action( 'wp_default_styles', array( $this, 'register_styles' ), 11 );
-		$this->customize_concurrency = new Customize_Concurrency( $this );
+
+		// Init gets called twice, but we don't need to re-create this object twice.
+		if ( empty( $this->customize_concurrency ) ) {
+			$this->customize_concurrency = new Customize_Concurrency( $this );
+		}
 	}
 
 	/**
@@ -49,6 +53,15 @@ class Plugin extends Plugin_Base {
 	 * @action wp_default_scripts
 	 */
 	function register_scripts( \WP_Scripts $wp_scripts ) {
+		$src = $this->dir_url . 'js/customize-concurrency.js';
+		$deps = array( 'underscore' );
+		$wp_scripts->add( $this->slug, $src, $deps );
+		$wp_scripts->add_data( $this->slug, 'group', 1 ); // 1 = in_footer.
+
+		$src = $this->dir_url . 'js/customize-concurrency-preview.js';
+		$deps = array( 'underscore', 'customize-preview', 'customize-selective-refresh' );
+		$wp_scripts->add( "{$this->slug}-preview", $src, $deps );
+		$wp_scripts->add_data( "{$this->slug}-preview", 'group', 1 ); // 1 = in_footer.
 	}
 
 	/**
@@ -58,5 +71,8 @@ class Plugin extends Plugin_Base {
 	 * @action wp_default_styles
 	 */
 	function register_styles( \WP_Styles $wp_styles ) {
+		$src = $this->dir_url . 'css/customize-concurrency.css';
+		$deps = array( 'customize-controls' );
+		$wp_styles->add( $this->slug, $src, $deps );
 	}
 }
